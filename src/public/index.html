@@ -119,10 +119,27 @@
     #zone-legend {
       position:absolute; bottom:48px; left:16px; background:var(--surface);
       border:1px solid var(--border); border-radius:10px; padding:10px 14px;
-      font-size:12px; z-index:5; display:flex; flex-direction:column; gap:6px; pointer-events:none;
+      font-size:12px; z-index:5; display:flex; flex-direction:column; gap:8px; pointer-events:none;
+      box-shadow:0 8px 32px rgba(0,0,0,0.5); border-left:3px solid var(--accent);
     }
-    .legend-row { display:flex; align-items:center; gap:8px; }
-    .legend-swatch { width:12px; height:12px; border-radius:3px; }
+    .legend-row { display:flex; align-items:center; gap:10px; }
+    .legend-swatch { width:14px; height:14px; border-radius:4px; box-shadow:0 0 8px rgba(255,255,255,0.25); }
+    .legend-swatch.active { box-shadow:0 0 14px rgba(0,180,216,0.8); }
+    .legend-swatch.paused { box-shadow:0 0 14px rgba(245,158,11,0.8); }
+
+    /* Zone glow / cover light effects */
+    @keyframes zone-pulse {
+      0% { box-shadow:0 0 0 0 rgba(0,180,216,0.7); }
+      70% { box-shadow:0 0 0 12px rgba(0,180,216,0); }
+      100% { box-shadow:0 0 0 0 rgba(0,180,216,0); }
+    }
+    @keyframes zone-pulse-paused {
+      0% { box-shadow:0 0 0 0 rgba(245,158,11,0.7); }
+      70% { box-shadow:0 0 0 12px rgba(245,158,11,0); }
+      100% { box-shadow:0 0 0 0 rgba(245,158,11,0); }
+    }
+    .zone-glow-active { animation:zone-pulse 2.5s ease-in-out infinite; }
+    .zone-glow-paused { animation:zone-pulse-paused 3s ease-in-out infinite; }
 
     #staff-link {
       position:absolute; bottom:16px; right:16px; font-size:11px; color:var(--muted);
@@ -476,17 +493,59 @@ function renderZones() {
   const geojson = { type:'FeatureCollection', features };
   if (map.getSource('zones')) { map.getSource('zones').setData(geojson); return; }
   map.addSource('zones', { type:'geojson', data:geojson });
+
+  // ── Zone soft glow fill (light cover over the whole zone) ──
+  map.addLayer({ id:'zones-glow', type:'fill', source:'zones',
+    paint: {
+      'fill-color':['case',['==',['get','status'],'paused'],'rgba(245,158,11,0.14)','rgba(0,180,216,0.12)'],
+      'fill-opacity':0.9
+    }
+  });
+  // ── Zone main fill ──
   map.addLayer({ id:'zones-fill', type:'fill', source:'zones',
-    paint: { 'fill-color':['case',['==',['get','status'],'paused'],'rgba(245,158,11,0.07)','rgba(0,180,216,0.05)'], 'fill-opacity':1 }
+    paint: { 'fill-color':['case',['==',['get','status'],'paused'],'rgba(245,158,11,0.10)','rgba(0,180,216,0.08)'], 'fill-opacity':1 }
   });
+  // ── Zone main outline ──
   map.addLayer({ id:'zones-outline', type:'line', source:'zones',
-    paint: { 'line-color':['case',['==',['get','status'],'paused'],'rgba(245,158,11,0.45)','rgba(0,180,216,0.28)'], 'line-width':1.5, 'line-dasharray':[4,3] }
+    paint: {
+      'line-color':['case',['==',['get','status'],'paused'],'rgba(245,158,11,0.75)','rgba(0,180,216,0.65)'],
+      'line-width':['case',['==',['get','status'],'paused'],2,2.5],
+      'line-dasharray':['case',['==',['get','status'],'paused'],[5,4],[3,2]],
+      'line-opacity':0.9
+    }
   });
-  // Zone label layer
+  // ── Zone outer glow ring (cover light effect) ──
+  map.addLayer({ id:'zones-glow-ring', type:'line', source:'zones',
+    paint: {
+      'line-color':['case',['==',['get','status'],'paused'],'rgba(245,158,11,0.45)','rgba(0,180,216,0.45)'],
+      'line-width':6, 'line-blur':2, 'line-opacity':0.35
+    }
+  });
+  // Zone label layer (more prominent with halo)
   map.addLayer({ id:'zones-label', type:'symbol', source:'zones',
-    layout: { 'text-field':['get','name'], 'text-size':11, 'text-font':['Open Sans SemiBold','Arial Unicode MS Regular'], 'text-anchor':'center' },
-    paint: { 'text-color':'rgba(255,255,255,0.35)', 'text-halo-color':'rgba(0,0,0,0.5)', 'text-halo-width':1 }
+    layout: {
+      'text-field':['get','name'], 'text-size':12, 'text-font':['Open Sans SemiBold','Arial Unicode MS Regular'],
+      'text-anchor':'center', 'text-allow-overlap':true, 'text-ignore-placement':true
+    },
+    paint: {
+      'text-color':'rgba(255,255,255,0.9)', 'text-halo-color':'rgba(0,0,0,0.85)', 'text-halo-width':2,
+      'text-opacity':0.95
+    }
   });
+
+  // Pulse effect loop for active zones (glow ring breathes)
+  let pulseDir = 1, pulseWidth = 6;
+  const pulseZone = () => {
+    pulseWidth += 0.18 * pulseDir;
+    if (pulseWidth > 10) pulseDir = -1;
+    if (pulseWidth < 4)  pulseDir = 1;
+    try {
+      map.setPaintProperty('zones-glow-ring','line-width', pulseWidth);
+      map.setPaintProperty('zones-glow-ring','line-opacity', 0.25 + Math.sin(Date.now()/900)*0.15);
+    } catch(e) {}
+  };
+  setInterval(pulseZone, 40);
+
   // Zone click popup
   map.on('click','zones-fill', e => {
     const p = e.features[0].properties;
