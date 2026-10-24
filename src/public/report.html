@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Report a Problem — Streetwise Colombo</title>
+  <meta name="description" content="Report a city maintenance problem in Colombo. No account needed. Takes less than 60 seconds." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..800&display=swap" rel="stylesheet" />
+  <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0d0f14; --surface: #161921; --surface2: #1e2230; --border: #2a2f40;
+      --text: #e2e8f0; --muted: #8892a4; --accent: #00b4d8; --accent-dim: #005f73;
+      --error: #ef4444; --success: #10b981; --font: 'Inter', system-ui, sans-serif;
+    }
+    body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; min-height: 100vh; }
+
+    #header {
+      display: flex; align-items: center; gap: 12px; padding: 14px 20px;
+      background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10;
+    }
+    #header a { color: var(--muted); text-decoration: none; font-size: 13px; }
+    #header a:hover { color: var(--accent); }
+    #header h1 { font-size: 16px; font-weight: 700; color: var(--accent); }
+
+    #container { max-width: 540px; margin: 0 auto; padding: 24px 16px 48px; }
+
+    /* Step indicator */
+    #steps { display: flex; gap: 0; margin-bottom: 28px; }
+    .step-indicator {
+      flex: 1; text-align: center; padding: 10px 0; font-size: 12px; font-weight: 600;
+      color: var(--muted); border-bottom: 2px solid var(--border); transition: all 0.2s;
+    }
+    .step-indicator.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .step-indicator.done { color: var(--success); border-bottom-color: var(--success); }
+
+    .step { display: none; }
+    .step.visible { display: block; }
+
+    h2 { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+    .step-desc { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+
+    /* Map step */
+    #location-map { width: 100%; height: 280px; border-radius: 12px; border: 2px solid var(--border); overflow: hidden; margin-bottom: 12px; }
+    #use-location-btn {
+      width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--surface2); color: var(--text); font-family: var(--font); font-size: 14px;
+      cursor: pointer; transition: all 0.15s; margin-bottom: 8px;
+    }
+    #use-location-btn:hover { border-color: var(--accent); color: var(--accent); }
+    #location-hint { font-size: 12px; color: var(--muted); text-align: center; }
+    #location-coords { font-size: 12px; color: var(--accent); text-align: center; margin-top: 6px; min-height: 18px; }
+
+    /* Text step */
+    label { display: block; font-weight: 600; font-size: 13px; margin-bottom: 6px; }
+    textarea {
+      width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--surface2); color: var(--text); font-family: var(--font); font-size: 14px;
+      resize: vertical; min-height: 120px; line-height: 1.5; transition: border 0.15s;
+    }
+    textarea:focus { outline: none; border-color: var(--accent); }
+    #char-counter { text-align: right; font-size: 11px; color: var(--muted); margin-top: 4px; }
+    #char-counter.warn { color: var(--error); }
+
+    /* Photo step */
+    #photo-drop {
+      border: 2px dashed var(--border); border-radius: 12px; padding: 32px; text-align: center;
+      cursor: pointer; transition: all 0.15s; background: var(--surface2); margin-bottom: 12px;
+    }
+    #photo-drop:hover, #photo-drop.drag-over { border-color: var(--accent); background: var(--accent-dim); }
+    #photo-drop p { color: var(--muted); font-size: 13px; margin-top: 8px; }
+    #photo-drop strong { color: var(--text); font-size: 14px; }
+    #photo-input { display: none; }
+    #photo-preview-wrap { position: relative; }
+    #photo-preview { width: 100%; border-radius: 10px; display: none; }
+    #remove-photo {
+      position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.7); border: none;
+      color: #fff; border-radius: 50%; width: 28px; height: 28px; cursor: pointer; font-size: 16px;
+      display: none; align-items: center; justify-content: center;
+    }
+    #remove-photo.visible { display: flex; }
+    #photo-skip { font-size: 12px; color: var(--muted); cursor: pointer; text-align: center; text-decoration: underline; }
+    #photo-skip:hover { color: var(--accent); }
+
+    /* Errors */
+    .field-error { color: var(--error); font-size: 12px; margin-top: 6px; display: none; }
+    .field-error.visible { display: block; }
+
+    /* Buttons */
+    .btn-row { display: flex; gap: 10px; margin-top: 24px; }
+    .btn {
+      flex: 1; padding: 12px; border-radius: 8px; font-family: var(--font); font-size: 15px;
+      font-weight: 600; cursor: pointer; transition: all 0.15s; border: none;
+    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: #0096b7; }
+    .btn-primary:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+    .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover { border-color: var(--accent); }
+
+    /* Loading spinner */
+    .spinner {
+      display: inline-block; width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Success screen */
+    #success-screen {
+      display: none; text-align: center; padding: 40px 20px; animation: fadeIn 0.4s ease;
+    }
+    #success-screen.visible { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+    .success-icon { font-size: 64px; margin-bottom: 16px; }
+    #success-screen h2 { font-size: 24px; margin-bottom: 8px; }
+    #success-screen p { color: var(--muted); font-size: 14px; margin-bottom: 24px; }
+    #report-id-box {
+      background: var(--surface2); border: 1px solid var(--border); border-radius: 10px;
+      padding: 16px; margin-bottom: 16px; font-variant-numeric: tabular-nums;
+    }
+    #report-id-box .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    #report-id-box .value { font-size: 18px; font-weight: 700; color: var(--accent); }
+    #follow-link-box {
+      background: var(--accent-dim); border: 1px solid var(--accent); border-radius: 10px;
+      padding: 14px; margin-bottom: 20px; word-break: break-all; font-size: 13px; color: var(--accent);
+      cursor: pointer; transition: background 0.15s;
+    }
+    #follow-link-box:hover { background: rgba(0,180,216,0.2); }
+    .copy-hint { font-size: 11px; color: var(--muted); margin-top: 6px; }
+
+    @media (max-width: 480px) {
+      #container { padding: 16px 12px 40px; }
+      #location-map { height: 220px; }
+    }
+  </style>
+</head>
+<body>
+
+<header id="header">
+  <a href="/" aria-label="Back to map">← Map</a>
+  <h1>Report a Problem</h1>
+</header>
+
+<div id="container">
+
+  <!-- Step indicator -->
+  <div id="steps" role="tablist" aria-label="Report form steps">
+    <div class="step-indicator active" id="ind-1" role="tab" aria-selected="true">1. Location</div>
+    <div class="step-indicator" id="ind-2" role="tab" aria-selected="false">2. Description</div>
+    <div class="step-indicator" id="ind-3" role="tab" aria-selected="false">3. Photo</div>
+  </div>
+
+  <!-- Step 1: Location -->
+  <section class="step visible" id="step-1" aria-label="Step 1: Location">
+    <h2>Where is the problem?</h2>
+    <p class="step-desc">Tap the map to place a pin, or use your device location.</p>
+
+    <div id="location-map" role="application" aria-label="Map for placing report location"></div>
+    <div id="location-coords" aria-live="polite"></div>
+    <button id="use-location-btn">📍 Use my current location</button>
+    <div id="location-error" class="field-error">Please place a pin on the map before continuing.</div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" id="step1-next" disabled>Next →</button>
+    </div>
+  </section>
+
+  <!-- Step 2: Description -->
+  <section class="step" id="step-2" aria-label="Step 2: Description">
+    <h2>Describe the problem</h2>
+    <p class="step-desc">Give us enough detail to find and fix it. 10–500 characters.</p>
+
+    <label for="report-text">Description <span style="color:var(--error)">*</span></label>
+    <textarea id="report-text" name="text" placeholder="e.g. Deep pothole on the main road near the bus stop, cars are swerving to avoid it." aria-required="true" aria-describedby="char-counter text-error" maxlength="500"></textarea>
+    <div id="char-counter">0 / 500</div>
+    <div id="text-error" class="field-error" role="alert">Description must be between 10 and 500 characters.</div>
+
+    <div class="btn-row">
+      <button class="btn btn-secondary" id="step2-back">← Back</button>
+      <button class="btn btn-primary" id="step2-next">Next →</button>
+    </div>
+  </section>
+
+  <!-- Step 3: Photo -->
+  <section class="step" id="step-3" aria-label="Step 3: Photo (optional)">
+    <h2>Add a photo</h2>
+    <p class="step-desc">Optional. JPG or PNG, up to 5 MB. Helps the crew find the problem.</p>
+
+    <div id="photo-drop" role="button" tabindex="0" aria-label="Drop photo or click to select">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--muted)"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      <strong>Drop photo here</strong>
+      <p>or click to browse</p>
+    </div>
+    <input type="file" id="photo-input" accept="image/jpeg,image/png" aria-label="Select photo file" />
+
+    <div id="photo-preview-wrap">
+      <img id="photo-preview" alt="Selected photo preview" />
+      <button id="remove-photo" aria-label="Remove selected photo">✕</button>
+    </div>
+
+    <div id="photo-error" class="field-error" role="alert"></div>
+
+    <p id="photo-skip" tabindex="0" role="button" aria-label="Skip photo and submit">Skip and submit without a photo</p>
+
+    <div class="btn-row">
+      <button class="btn btn-secondary" id="step3-back">← Back</button>
+      <button class="btn btn-primary" id="submit-btn">Submit report</button>
+    </div>
+  </section>
+
+  <!-- Success screen -->
+  <div id="success-screen" aria-live="polite" aria-label="Report submitted successfully">
+    <div class="success-icon">✅</div>
+    <h2>Report received!</h2>
+    <p>Your report is being reviewed. Use the link below to follow its progress.</p>
+
+    <div id="report-id-box">
+      <div class="label">Report ID</div>
+      <div class="value" id="out-report-id">–</div>
+    </div>
+
+    <div id="follow-link-box" role="button" tabindex="0" aria-label="Copy follow link" onclick="copyFollowLink()">
+      <div class="label" style="color:var(--muted)">Your private follow link (tap to copy)</div>
+      <div id="out-follow-link">–</div>
+      <div class="copy-hint" id="copy-hint">Tap to copy to clipboard</div>
+    </div>
+
+    <a href="/" class="btn btn-secondary" style="display:block;text-align:center;text-decoration:none;padding:12px">← Back to map</a>
+  </div>
+
+</div>
+
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script>
+let pickedLat = null, pickedLng = null;
+let photoBase64 = null;
+let currentStep = 1;
+let marker = null;
+
+// ── Location map ───────────────────────────────────────────────────────────────
+const locMap = new maplibregl.Map({
+  container: 'location-map',
+  style: 'https://tiles.openfreemap.org/styles/dark',
+  center: [79.878, 6.906],
+  zoom: 12,
+  attributionControl: false,
+});
+
+locMap.on('click', e => {
+  pickedLat = e.lngLat.lat;
+  pickedLng = e.lngLat.lng;
+  placeMarker(pickedLng, pickedLat);
+  updateLocationDisplay();
+});
+
+function placeMarker(lng, lat) {
+  if (marker) marker.remove();
+  marker = new maplibregl.Marker({ color: '#00b4d8' })
+    .setLngLat([lng, lat])
+    .addTo(locMap);
+}
+
+function updateLocationDisplay() {
+  document.getElementById('location-coords').textContent =
+    `📍 ${pickedLat.toFixed(5)}, ${pickedLng.toFixed(5)}`;
+  document.getElementById('step1-next').disabled = false;
+  document.getElementById('location-error').classList.remove('visible');
+}
+
+document.getElementById('use-location-btn').addEventListener('click', () => {
+  if (!navigator.geolocation) return alert('Geolocation not supported.');
+  navigator.geolocation.getCurrentPosition(pos => {
+    pickedLat = pos.coords.latitude;
+    pickedLng = pos.coords.longitude;
+    placeMarker(pickedLng, pickedLat);
+    locMap.flyTo({ center: [pickedLng, pickedLat], zoom: 16 });
+    updateLocationDisplay();
+  }, () => alert('Could not get your location. Please tap the map instead.'));
+});
+
+// ── Step navigation ────────────────────────────────────────────────────────────
+function goStep(n) {
+  document.querySelectorAll('.step').forEach(s => s.classList.remove('visible'));
+  document.getElementById(`step-${n}`).classList.add('visible');
+  document.querySelectorAll('.step-indicator').forEach((ind, i) => {
+    ind.classList.toggle('active', i + 1 === n);
+    ind.classList.toggle('done', i + 1 < n);
+    ind.setAttribute('aria-selected', i + 1 === n ? 'true' : 'false');
+  });
+  currentStep = n;
+  window.scrollTo(0, 0);
+}
+
+document.getElementById('step1-next').addEventListener('click', () => {
+  if (!pickedLat) {
+    document.getElementById('location-error').classList.add('visible');
+    return;
+  }
+  goStep(2);
+  document.getElementById('report-text').focus();
+});
+
+document.getElementById('step2-back').addEventListener('click', () => goStep(1));
+document.getElementById('step2-next').addEventListener('click', () => {
+  const text = document.getElementById('report-text').value.trim();
+  const err  = document.getElementById('text-error');
+  if (text.length < 10 || text.length > 500) {
+    err.classList.add('visible');
+    return;
+  }
+  err.classList.remove('visible');
+  goStep(3);
+});
+
+document.getElementById('step3-back').addEventListener('click', () => goStep(2));
+
+// ── Character counter ─────────────────────────────────────────────────────────
+document.getElementById('report-text').addEventListener('input', function() {
+  const len = this.value.length;
+  const counter = document.getElementById('char-counter');
+  counter.textContent = `${len} / 500`;
+  counter.classList.toggle('warn', len > 480 || len < 10);
+});
+
+// ── Photo upload ──────────────────────────────────────────────────────────────
+const photoInput   = document.getElementById('photo-input');
+const photoDrop    = document.getElementById('photo-drop');
+const photoPreview = document.getElementById('photo-preview');
+const removePhoto  = document.getElementById('remove-photo');
+
+photoDrop.addEventListener('click', () => photoInput.click());
+photoDrop.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') photoInput.click(); });
+
+photoDrop.addEventListener('dragover', e => { e.preventDefault(); photoDrop.classList.add('drag-over'); });
+photoDrop.addEventListener('dragleave', () => photoDrop.classList.remove('drag-over'));
+photoDrop.addEventListener('drop', e => {
+  e.preventDefault();
+  photoDrop.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) handlePhoto(file);
+});
+
+photoInput.addEventListener('change', () => {
+  if (photoInput.files[0]) handlePhoto(photoInput.files[0]);
+});
+
+function handlePhoto(file) {
+  const err = document.getElementById('photo-error');
+  if (!['image/jpeg','image/png'].includes(file.type)) {
+    err.textContent = 'Only JPG and PNG files are allowed.';
+    err.classList.add('visible');
+    return;
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    err.textContent = 'Photo must be 5 MB or smaller.';
+    err.classList.add('visible');
+    return;
+  }
+  err.classList.remove('visible');
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    photoBase64 = e.target.result;
+    photoPreview.src = photoBase64;
+    photoPreview.style.display = 'block';
+    photoDrop.style.display = 'none';
+    removePhoto.classList.add('visible');
+  };
+  reader.readAsDataURL(file);
+}
+
+removePhoto.addEventListener('click', () => {
+  photoBase64 = null;
+  photoPreview.src = '';
+  photoPreview.style.display = 'none';
+  photoDrop.style.display = 'block';
+  removePhoto.classList.remove('visible');
+  photoInput.value = '';
+});
+
+document.getElementById('photo-skip').addEventListener('click', submitReport);
+document.getElementById('photo-skip').addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.key === ' ') submitReport();
+});
+
+// ── Submit ────────────────────────────────────────────────────────────────────
+document.getElementById('submit-btn').addEventListener('click', submitReport);
+
+async function submitReport() {
+  const submitBtn = document.getElementById('submit-btn');
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<span class="spinner"></span> Submitting…';
+
+  const text = document.getElementById('report-text').value.trim();
+
+  try {
+    const res = await fetch('/api/reports', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, lat: pickedLat, lng: pickedLng, photo: photoBase64 }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.error || 'Submission failed.');
+    }
+
+    // Show success
+    document.getElementById('steps').style.display = 'none';
+    document.querySelectorAll('.step').forEach(s => s.style.display = 'none');
+    const screen = document.getElementById('success-screen');
+    screen.classList.add('visible');
+    document.getElementById('out-report-id').textContent = data.id;
+    document.getElementById('out-follow-link').textContent = data.follow_link;
+
+  } catch (err) {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Submit report';
+    alert(err.message || 'Something went wrong. Please try again.');
+  }
+}
+
+function copyFollowLink() {
+  const link = document.getElementById('out-follow-link').textContent;
+  navigator.clipboard.writeText(link).then(() => {
+    document.getElementById('copy-hint').textContent = '✓ Copied!';
+  });
+}
+</script>
+</body>
+</html>

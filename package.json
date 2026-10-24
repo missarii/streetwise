@@ -1,0 +1,26 @@
+{
+  "name": "streetwise",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --port 8787",
+    "deploy": "wrangler deploy",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:create": "wrangler d1 create streetwise",
+    "db:migrate:local": "wrangler d1 execute streetwise --local --file=src/db/migrations/0001_init.sql && wrangler d1 execute streetwise --local --file=src/db/migrations/0002_seed.sql && wrangler d1 execute streetwise --local --file=src/db/migrations/0003_past_reports.sql",
+    "db:migrate:remote": "wrangler d1 execute streetwise --remote --file=src/db/migrations/0001_init.sql && wrangler d1 execute streetwise --remote --file=src/db/migrations/0002_seed.sql && wrangler d1 execute streetwise --remote --file=src/db/migrations/0003_past_reports.sql",
+    "accuracy": "npx tsx scripts/measure-accuracy.ts"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "hono": "^4.13.13",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261024.1",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.12",
+    "wrangler": "^4.152.0"
+  }
+}

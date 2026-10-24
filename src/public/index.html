@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Streetwise Colombo — City Maintenance Map</title>
+  <meta name="description" content="Live city maintenance map for Colombo. Report potholes, flooding, street light outages and more. Watch the city get fixed in real time." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..800;1,14..32,300..800&display=swap" rel="stylesheet" />
+  <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d0f14;
+      --surface:   #161921;
+      --surface2:  #1e2230;
+      --border:    #2a2f40;
+      --text:      #e2e8f0;
+      --muted:     #8892a4;
+      --accent:    #00b4d8;
+      --accent-dim:#005f73;
+      --p1: #6b7280; --p2: #3b82f6; --p3: #f59e0b; --p4: #f97316; --p5: #ef4444;
+      --font: 'Inter', system-ui, sans-serif;
+      --radius: 10px;
+    }
+
+    html, body { height: 100%; width: 100%; overflow: hidden; }
+    body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; display: flex; flex-direction: column; }
+
+    /* ── Top bar ── */
+    #topbar {
+      display: flex; align-items: center; gap: 12px; padding: 10px 16px;
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      z-index: 10; flex-shrink: 0; flex-wrap: wrap;
+    }
+    #topbar h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.5px; color: var(--accent); flex-shrink: 0; }
+    #topbar h1 span { color: var(--text); }
+
+    .type-filters { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; }
+    .type-btn {
+      padding: 4px 12px; border-radius: 20px; border: 1px solid var(--border);
+      background: transparent; color: var(--muted); font-size: 12px; font-family: var(--font);
+      cursor: pointer; transition: all 0.15s;
+    }
+    .type-btn:hover { border-color: var(--accent); color: var(--text); }
+    .type-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+
+    #report-btn {
+      padding: 8px 18px; border-radius: 8px; border: none; background: var(--accent);
+      color: #fff; font-weight: 600; font-size: 14px; font-family: var(--font);
+      cursor: pointer; transition: all 0.15s; text-decoration: none; flex-shrink: 0;
+      display: flex; align-items: center; gap: 6px;
+    }
+    #report-btn:hover { background: #0096b7; transform: translateY(-1px); }
+
+    /* ── Layout ── */
+    #main { display: flex; flex: 1; min-height: 0; }
+    #map-container { flex: 1; position: relative; }
+    #map { width: 100%; height: 100%; }
+
+    /* ── Sidebar ── */
+    #sidebar {
+      width: 340px; background: var(--surface); border-left: 1px solid var(--border);
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+
+    /* ── Stats bar ── */
+    #stats-bar {
+      display: flex; gap: 0; border-bottom: 1px solid var(--border); flex-shrink: 0;
+    }
+    .stat-item {
+      flex: 1; padding: 14px 12px; text-align: center; border-right: 1px solid var(--border);
+    }
+    .stat-item:last-child { border-right: none; }
+    .stat-num { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--accent); }
+    .stat-label { font-size: 10px; color: var(--muted); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    /* ── Report list ── */
+    #report-list-header {
+      padding: 12px 16px 8px; font-size: 11px; text-transform: uppercase;
+      letter-spacing: 0.8px; color: var(--muted); border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    #report-list { flex: 1; overflow-y: auto; }
+    #report-list::-webkit-scrollbar { width: 4px; }
+    #report-list::-webkit-scrollbar-track { background: var(--surface); }
+    #report-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    .report-item {
+      padding: 14px 16px; border-bottom: 1px solid var(--border);
+      cursor: pointer; transition: background 0.1s; display: flex; gap: 12px; align-items: flex-start;
+    }
+    .report-item:hover { background: var(--surface2); }
+    .report-item.active { background: var(--surface2); border-left: 3px solid var(--accent); }
+
+    .priority-dot {
+      width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-top: 4px;
+    }
+    .p1 { background: var(--p1); } .p2 { background: var(--p2); }
+    .p3 { background: var(--p3); } .p4 { background: var(--p4); } .p5 { background: var(--p5); }
+
+    .report-item-body { flex: 1; min-width: 0; }
+    .report-item-text { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px; }
+    .report-item-meta { font-size: 11px; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; }
+    .badge {
+      display: inline-block; padding: 1px 7px; border-radius: 12px;
+      font-size: 10px; font-weight: 600; letter-spacing: 0.3px;
+    }
+    .badge-type { background: var(--surface2); border: 1px solid var(--border); color: var(--muted); }
+    .badge-status-published { background: #064e3b; color: #6ee7b7; }
+    .badge-status-in_progress { background: #1e3a5f; color: #93c5fd; }
+    .badge-status-fixed { background: #1f2937; color: #9ca3af; }
+
+    /* ── Report card overlay ── */
+    #report-card {
+      position: absolute; top: 16px; right: 16px; width: 340px; max-height: calc(100% - 32px);
+      background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.6); overflow-y: auto; z-index: 100;
+      transform: translateX(400px); transition: transform 0.2s ease; display: flex; flex-direction: column;
+    }
+    #report-card.open { transform: translateX(0); }
+    #report-card::-webkit-scrollbar { width: 4px; }
+    #report-card::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    .card-header {
+      padding: 16px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+    }
+    .card-priority {
+      width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center;
+      justify-content: center; font-weight: 800; font-size: 16px; color: #fff; flex-shrink: 0;
+    }
+    .card-title { font-size: 15px; font-weight: 600; flex: 1; }
+    #close-card {
+      background: var(--surface2); border: 1px solid var(--border); border-radius: 6px;
+      color: var(--muted); width: 28px; height: 28px; cursor: pointer; font-size: 16px;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      transition: all 0.15s;
+    }
+    #close-card:hover { background: var(--border); color: var(--text); }
+
+    .card-body { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+    .card-row { display: flex; justify-content: space-between; align-items: center; }
+    .card-row-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .card-row-value { font-size: 13px; font-weight: 500; }
+    .card-text { font-size: 14px; line-height: 1.5; color: var(--text); }
+    .card-photo { width: 100%; border-radius: 8px; object-fit: cover; max-height: 180px; }
+    .card-reason { font-size: 12px; color: var(--muted); font-style: italic; line-height: 1.4; }
+    .card-ai-badge {
+      display: inline-flex; align-items: center; gap: 4px; font-size: 11px;
+      color: var(--accent); background: var(--accent-dim); padding: 3px 8px; border-radius: 12px;
+    }
+
+    /* ── Map zone popup ── */
+    .zone-popup {
+      background: var(--surface); color: var(--text); padding: 10px 14px;
+      border-radius: 8px; border: 1px solid var(--border); font-family: var(--font);
+      font-size: 13px; min-width: 160px;
+    }
+    .zone-popup strong { display: block; margin-bottom: 4px; }
+    .zone-paused { color: #f59e0b; font-size: 12px; }
+
+    /* ── Loading / empty states ── */
+    .state-msg {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 40px 20px; color: var(--muted); gap: 10px; text-align: center;
+    }
+    .state-msg svg { opacity: 0.4; }
+    .state-msg p { font-size: 13px; }
+
+    /* ── Mobile ── */
+    @media (max-width: 768px) {
+      #main { flex-direction: column; }
+      #sidebar { width: 100%; height: 260px; border-left: none; border-top: 1px solid var(--border); }
+      #stats-bar .stat-num { font-size: 18px; }
+      #report-card { top: auto; right: 0; bottom: 0; left: 0; width: 100%; max-height: 70vh;
+        border-radius: 14px 14px 0 0; transform: translateY(110%); }
+      #report-card.open { transform: translateY(0); }
+    }
+
+    /* ── Zone status legend on map ── */
+    #zone-legend {
+      position: absolute; bottom: 32px; left: 16px; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px;
+      font-size: 12px; z-index: 5; display: flex; flex-direction: column; gap: 6px;
+    }
+    .legend-row { display: flex; align-items: center; gap: 8px; }
+    .legend-swatch { width: 14px; height: 14px; border-radius: 3px; }
+
+    /* ── Staff link ── */
+    #staff-link {
+      position: absolute; bottom: 32px; right: 16px; font-size: 11px; color: var(--muted);
+      text-decoration: none; background: var(--surface); border: 1px solid var(--border);
+      padding: 6px 12px; border-radius: 8px; z-index: 5; transition: color 0.15s;
+    }
+    #staff-link:hover { color: var(--accent); }
+
+    /* ── Example data notice ── */
+    #example-notice {
+      position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+      background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.4);
+      color: #f59e0b; padding: 5px 14px; border-radius: 20px; font-size: 11px;
+      z-index: 5; pointer-events: none; white-space: nowrap;
+    }
+
+    /* ── Pulse animation for new reports ── */
+    @keyframes pulse-in { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: scale(1); } }
+    .marker-new { animation: pulse-in 0.3s ease-out; }
+  </style>
+</head>
+<body>
+
+<!-- Top bar -->
+<nav id="topbar" role="navigation" aria-label="Main navigation">
+  <h1>Street<span>wise</span></h1>
+
+  <div class="type-filters" role="group" aria-label="Filter by type">
+    <button class="type-btn active" data-type="all" id="filter-all">All types</button>
+    <button class="type-btn" data-type="pothole" id="filter-pothole">🕳️ Pothole</button>
+    <button class="type-btn" data-type="street_light" id="filter-street_light">💡 Street light</button>
+    <button class="type-btn" data-type="flooding" id="filter-flooding">🌊 Flooding</button>
+    <button class="type-btn" data-type="rubbish" id="filter-rubbish">🗑️ Rubbish</button>
+  </div>
+
+  <a href="/report" id="report-btn" aria-label="Submit a new report">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    Report
+  </a>
+</nav>
+
+<!-- Map + sidebar layout -->
+<main id="main">
+  <div id="map-container">
+    <div id="map" aria-label="Colombo city maintenance map"></div>
+
+    <div id="example-notice" aria-live="polite">⚠️ Some data is example data for demonstration</div>
+
+    <!-- Zone legend -->
+    <div id="zone-legend" aria-label="Map legend">
+      <div class="legend-row"><div class="legend-swatch" style="background:rgba(0,180,216,0.2);border:1.5px solid rgba(0,180,216,0.5)"></div> Active zone</div>
+      <div class="legend-row"><div class="legend-swatch" style="background:rgba(245,158,11,0.2);border:1.5px solid rgba(245,158,11,0.5)"></div> Paused zone</div>
+    </div>
+
+    <a href="/staff/login" id="staff-link">Staff sign in →</a>
+
+    <!-- Report card -->
+    <aside id="report-card" role="complementary" aria-label="Report details" aria-hidden="true">
+      <div class="card-header">
+        <div id="card-priority" class="card-priority" aria-label="Priority"></div>
+        <span id="card-title" class="card-title">–</span>
+        <button id="close-card" aria-label="Close report card">✕</button>
+      </div>
+      <div class="card-body" id="card-body"></div>
+    </aside>
+  </div>
+
+  <!-- Sidebar: stats + list -->
+  <aside id="sidebar" aria-label="Report list and statistics">
+    <div id="stats-bar" role="region" aria-label="City statistics" aria-live="polite">
+      <div class="stat-item">
+        <div class="stat-num" id="stat-open">–</div>
+        <div class="stat-label">Open</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num" id="stat-fixed30">–</div>
+        <div class="stat-label">Fixed (30d)</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num" id="stat-total">–</div>
+        <div class="stat-label">Fixed total</div>
+      </div>
+    </div>
+    <div id="report-list-header">Recent reports</div>
+    <div id="report-list" role="list" aria-label="List of public reports"></div>
+  </aside>
+</main>
+
+<!-- Accessible list fallback is provided by #report-list in the sidebar -->
+
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script>
+// ── State ────────────────────────────────────────────────────────────────────
+let allReports = [];
+let allZones   = [];
+let activeFilter = 'all';
+let activeReportId = null;
+const POLL_INTERVAL_MS = 30000;
+
+// ── Priority colours ─────────────────────────────────────────────────────────
+const PRIORITY_COLORS = {
+  1: '#6b7280', 2: '#3b82f6', 3: '#f59e0b', 4: '#f97316', 5: '#ef4444',
+};
+
+function priorityColor(p) { return PRIORITY_COLORS[p] || '#6b7280'; }
+
+// ── Map setup ─────────────────────────────────────────────────────────────────
+const map = new maplibregl.Map({
+  container: 'map',
+  style: 'https://tiles.openfreemap.org/styles/dark',
+  center: [79.878, 6.906],
+  zoom: 12.6,
+  minZoom: 10,
+  maxZoom: 20,
+  attributionControl: true,
+});
+
+const nav = new maplibregl.NavigationControl({ showCompass: false });
+map.addControl(nav, 'top-right');
+
+// ── Fetch helpers ─────────────────────────────────────────────────────────────
+async function fetchReports() {
+  const qs = activeFilter !== 'all' ? `?type=${activeFilter}` : '';
+  const res = await fetch(`/api/reports${qs}`);
+  if (!res.ok) throw new Error('Failed to load reports');
+  return (await res.json()).reports;
+}
+
+async function fetchZones() {
+  const res = await fetch('/api/zones');
+  if (!res.ok) throw new Error('Failed to load zones');
+  return (await res.json()).zones;
+}
+
+async function fetchStats() {
+  const res = await fetch('/api/stats');
+  if (!res.ok) return;
+  const { totals } = await res.json();
+  animateCounter('stat-open',    totals.open);
+  animateCounter('stat-fixed30', totals.fixed_30d);
+  animateCounter('stat-total',   totals.fixed_total);
+}
+
+// ── Counter animation ─────────────────────────────────────────────────────────
+function animateCounter(id, target) {
+  const el = document.getElementById(id);
+  const current = parseInt(el.textContent) || 0;
+  const diff = target - current;
+  if (diff === 0) return;
+  const steps = 20;
+  let step = 0;
+  const timer = setInterval(() => {
+    step++;
+    el.textContent = Math.round(current + (diff * step / steps));
+    if (step >= steps) { el.textContent = target; clearInterval(timer); }
+  }, 16);
+}
+
+// ── Map layers setup (runs once after style loads) ────────────────────────────
+map.on('load', async () => {
+  await loadZones();
+  await loadReports();
+  fetchStats();
+
+  // Set up polling
+  setInterval(async () => {
+    await loadReports();
+    fetchStats();
+  }, POLL_INTERVAL_MS);
+});
+
+// ── Zones ─────────────────────────────────────────────────────────────────────
+async function loadZones() {
+  try {
+    allZones = await fetchZones();
+    renderZones();
+  } catch (e) {
+    console.error('Zones load failed:', e);
+  }
+}
+
+function renderZones() {
+  const features = allZones.map(z => {
+    const coords = JSON.parse(z.polygon);
+    return {
+      type: 'Feature',
+      properties: { id: z.id, name: z.name, status: z.status, pause_reason: z.pause_reason, paused_until: z.paused_until },
+      geometry: { type: 'Polygon', coordinates: [coords.map(([lng, lat]) => [lng, lat])] },
+    };
+  });
+
+  const geojson = { type: 'FeatureCollection', features };
+
+  if (map.getSource('zones')) {
+    map.getSource('zones').setData(geojson);
+    return;
+  }
+
+  map.addSource('zones', { type: 'geojson', data: geojson });
+
+  map.addLayer({
+    id: 'zones-fill',
+    type: 'fill',
+    source: 'zones',
+    paint: {
+      'fill-color': ['case', ['==', ['get', 'status'], 'paused'], 'rgba(245,158,11,0.08)', 'rgba(0,180,216,0.06)'],
+      'fill-opacity': 1,
+    },
+  });
+
+  map.addLayer({
+    id: 'zones-outline',
+    type: 'line',
+    source: 'zones',
+    paint: {
+      'line-color': ['case', ['==', ['get', 'status'], 'paused'], 'rgba(245,158,11,0.5)', 'rgba(0,180,216,0.3)'],
+      'line-width': 1.5,
+      'line-dasharray': [3, 2],
+    },
+  });
+
+  // Zone click → popup
+  map.on('click', 'zones-fill', e => {
+    const props = e.features[0].properties;
+    const content = `<div class="zone-popup">
+      <strong>${props.name}</strong>
+      ${props.status === 'paused'
+        ? `<div class="zone-paused">⏸ Paused: ${props.pause_reason || 'n/a'} (until ${props.paused_until || '?'})</div>`
+        : '<div style="color:#6ee7b7;font-size:12px">✓ Active</div>'
+      }
+    </div>`;
+    new maplibregl.Popup({ closeButton: false, maxWidth: '280px' })
+      .setLngLat(e.lngLat)
+      .setHTML(content)
+      .addTo(map);
+  });
+  map.on('mouseenter', 'zones-fill', () => { map.getCanvas().style.cursor = 'pointer'; });
+  map.on('mouseleave', 'zones-fill', () => { map.getCanvas().style.cursor = ''; });
+}
+
+// ── Reports (clustered) ───────────────────────────────────────────────────────
+async function loadReports() {
+  try {
+    const fresh = await fetchReports();
+
+    // Detect genuinely new IDs for animation
+    const existingIds = new Set(allReports.map(r => r.id));
+    const newIds = fresh.filter(r => !existingIds.has(r.id)).map(r => r.id);
+
+    allReports = fresh;
+    renderReportList();
+    renderMapClusters(newIds);
+  } catch (e) {
+    console.error('Reports load failed:', e);
+    showListError();
+  }
+}
+
+function renderMapClusters(newIds = []) {
+  const features = allReports.map(r => ({
+    type: 'Feature',
+    properties: { id: r.id, priority: r.priority, type: r.type, status: r.status, isNew: newIds.includes(r.id) },
+    geometry: { type: 'Point', coordinates: [r.lng, r.lat] },
+  }));
+
+  const geojson = { type: 'FeatureCollection', features };
+
+  if (map.getSource('reports')) {
+    map.getSource('reports').setData(geojson);
+    return;
+  }
+
+  map.addSource('reports', {
+    type: 'geojson',
+    data: geojson,
+    cluster: true,
+    clusterMaxZoom: 14,
+    clusterRadius: 50,
+  });
+
+  // Cluster circles
+  map.addLayer({
+    id: 'clusters',
+    type: 'circle',
+    source: 'reports',
+    filter: ['has', 'point_count'],
+    paint: {
+      'circle-color': ['step', ['get', 'point_count'], '#3b82f6', 5, '#f59e0b', 10, '#ef4444'],
+      'circle-radius': ['step', ['get', 'point_count'], 18, 5, 24, 10, 30],
+      'circle-opacity': 0.85,
+      'circle-stroke-width': 2,
+      'circle-stroke-color': 'rgba(255,255,255,0.2)',
+    },
+  });
+
+  // Cluster count labels
+  map.addLayer({
+    id: 'cluster-count',
+    type: 'symbol',
+    source: 'reports',
+    filter: ['has', 'point_count'],
+    layout: {
+      'text-field': '{point_count_abbreviated}',
+      'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+      'text-size': 13,
+    },
+    paint: { 'text-color': '#fff' },
+  });
+
+  // Individual report pins
+  map.addLayer({
+    id: 'report-points',
+    type: 'circle',
+    source: 'reports',
+    filter: ['!', ['has', 'point_count']],
+    paint: {
+      'circle-color': [
+        'match', ['get', 'priority'],
+        1, '#6b7280', 2, '#3b82f6', 3, '#f59e0b', 4, '#f97316', 5, '#ef4444', '#6b7280',
+      ],
+      'circle-radius': 8,
+      'circle-stroke-color': 'rgba(255,255,255,0.4)',
+      'circle-stroke-width': 1.5,
+    },
+  });
+
+  // Expand cluster on click
+  map.on('click', 'clusters', e => {
+    const features = map.queryRenderedFeatures(e.point, { layers: ['clusters'] });
+    const clusterId = features[0].properties.cluster_id;
+    map.getSource('reports').getClusterExpansionZoom(clusterId, (err, zoom) => {
+      if (err) return;
+      map.easeTo({ center: features[0].geometry.coordinates, zoom });
+    });
+  });
+
+  // Open report card on pin click
+  map.on('click', 'report-points', e => {
+    const id = e.features[0].properties.id;
+    openCard(id);
+  });
+
+  map.on('mouseenter', 'clusters',       () => { map.getCanvas().style.cursor = 'pointer'; });
+  map.on('mouseleave', 'clusters',       () => { map.getCanvas().style.cursor = ''; });
+  map.on('mouseenter', 'report-points',  () => { map.getCanvas().style.cursor = 'pointer'; });
+  map.on('mouseleave', 'report-points',  () => { map.getCanvas().style.cursor = ''; });
+}
+
+// ── Report list ───────────────────────────────────────────────────────────────
+function renderReportList() {
+  const list = document.getElementById('report-list');
+  if (allReports.length === 0) {
+    list.innerHTML = `<div class="state-msg">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <p>No public reports match the current filter.</p>
+    </div>`;
+    return;
+  }
+
+  list.innerHTML = allReports.slice(0, 60).map(r => `
+    <div class="report-item" role="listitem" data-id="${r.id}" tabindex="0"
+         aria-label="Priority ${r.priority} ${r.type} report: ${r.text.slice(0,60)}">
+      <div class="priority-dot p${r.priority}" aria-hidden="true"></div>
+      <div class="report-item-body">
+        <div class="report-item-text">${escHtml(r.text)}</div>
+        <div class="report-item-meta">
+          <span class="badge badge-type">${formatType(r.type)}</span>
+          <span class="badge badge-status-${r.status}">${formatStatus(r.status)}</span>
+          <span>${relativeTime(r.created_at)}</span>
+        </div>
+      </div>
+    </div>
+  `).join('');
+
+  list.querySelectorAll('.report-item').forEach(el => {
+    el.addEventListener('click', () => openCard(el.dataset.id));
+    el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') openCard(el.dataset.id); });
+  });
+}
+
+// ── Report card ───────────────────────────────────────────────────────────────
+function openCard(id) {
+  const r = allReports.find(r => r.id === id);
+  if (!r) return;
+
+  activeReportId = id;
+  const color = priorityColor(r.priority);
+  const card  = document.getElementById('report-card');
+  const pEl   = document.getElementById('card-priority');
+  const tEl   = document.getElementById('card-title');
+  const bEl   = document.getElementById('card-body');
+
+  pEl.textContent = r.priority;
+  pEl.style.background = color;
+  pEl.setAttribute('aria-label', `Priority ${r.priority}`);
+  tEl.textContent = formatType(r.type) + (r.size ? ` · ${r.size}` : '');
+
+  bEl.innerHTML = `
+    <p class="card-text">${escHtml(r.text)}</p>
+    ${r.photo ? `<img class="card-photo" src="${r.photo}" alt="Report photo" loading="lazy" />` : ''}
+    <div>
+      <div class="card-row"><span class="card-row-label">Status</span><span class="card-row-value">${formatStatus(r.status)}</span></div>
+      <div class="card-row" style="margin-top:6px"><span class="card-row-label">Zone</span><span class="card-row-value">${r.zone}</span></div>
+      <div class="card-row" style="margin-top:6px"><span class="card-row-label">Reported</span><span class="card-row-value">${relativeTime(r.created_at)}</span></div>
+    </div>
+    ${r.reason ? `<p class="card-reason">"${escHtml(r.reason)}"</p>` : ''}
+    <div class="card-ai-badge">
+      ${r.triaged_by === 'model' ? '🤖 AI classified' : '📋 Rule classified'}
+    </div>
+  `;
+
+  card.classList.add('open');
+  card.setAttribute('aria-hidden', 'false');
+
+  // Fly map to report
+  map.flyTo({ center: [r.lng, r.lat], zoom: Math.max(map.getZoom(), 15), duration: 800 });
+
+  // Highlight in list
+  document.querySelectorAll('.report-item').forEach(el => el.classList.toggle('active', el.dataset.id === id));
+}
+
+function closeCard() {
+  activeReportId = null;
+  const card = document.getElementById('report-card');
+  card.classList.remove('open');
+  card.setAttribute('aria-hidden', 'true');
+  document.querySelectorAll('.report-item').forEach(el => el.classList.remove('active'));
+}
+
+document.getElementById('close-card').addEventListener('click', closeCard);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeCard(); });
+
+// ── Type filters ──────────────────────────────────────────────────────────────
+document.querySelectorAll('.type-btn').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeFilter = btn.dataset.type;
+    await loadReports();
+  });
+});
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function formatType(t) {
+  const m = { pothole:'Pothole', street_light:'Street light', flooding:'Flooding', rubbish:'Rubbish', not_relevant:'Not relevant' };
+  return m[t] || t;
+}
+function formatStatus(s) {
+  const m = { published:'Open', in_progress:'In progress', fixed:'Fixed', received:'Received', needs_review:'Under review', rejected:'Rejected', merged:'Merged' };
+  return m[s] || s;
+}
+function relativeTime(iso) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff/60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins/60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs/24)}d ago`;
+}
+function showListError() {
+  document.getElementById('report-list').innerHTML = `<div class="state-msg">
+    <p>Failed to load reports. Please try again.</p>
+  </div>`;
+}
+</script>
+</body>
+</html>

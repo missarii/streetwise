@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Follow Your Report — Streetwise Colombo</title>
+  <meta name="description" content="Track the status of your city maintenance report from received to fixed." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0d0f14; --surface: #161921; --surface2: #1e2230; --border: #2a2f40;
+      --text: #e2e8f0; --muted: #8892a4; --accent: #00b4d8;
+      --p1: #6b7280; --p2: #3b82f6; --p3: #f59e0b; --p4: #f97316; --p5: #ef4444;
+      --font: 'Inter', system-ui, sans-serif;
+    }
+    body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; min-height: 100vh; }
+
+    #header {
+      display: flex; align-items: center; gap: 12px; padding: 14px 20px;
+      background: var(--surface); border-bottom: 1px solid var(--border);
+    }
+    #header a { color: var(--muted); text-decoration: none; font-size: 13px; }
+    #header a:hover { color: var(--accent); }
+    #header h1 { font-size: 16px; font-weight: 700; color: var(--accent); }
+
+    #container { max-width: 540px; margin: 0 auto; padding: 28px 16px 60px; }
+
+    /* Loading */
+    #loading { display: flex; flex-direction: column; align-items: center; padding: 60px 20px; gap: 16px; color: var(--muted); }
+    .spinner-lg { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Error */
+    #error-state { display: none; text-align: center; padding: 60px 20px; color: var(--muted); }
+    #error-state.visible { display: block; }
+    #error-state h2 { color: var(--text); margin-bottom: 8px; }
+
+    /* Report header */
+    #report-header { display: none; }
+    #report-header.visible { display: block; }
+
+    .report-id-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .report-id-val { font-size: 24px; font-weight: 800; color: var(--accent); margin-bottom: 16px; font-variant-numeric: tabular-nums; }
+
+    .report-meta-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 24px;
+    }
+    .meta-card {
+      background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 12px;
+    }
+    .meta-card .label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .meta-card .value { font-size: 15px; font-weight: 600; }
+
+    .status-banner {
+      border-radius: 12px; padding: 14px 16px; margin-bottom: 24px;
+      display: flex; align-items: center; gap: 12px; font-weight: 600; font-size: 15px;
+    }
+    .status-published  { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); color: #10b981; }
+    .status-in_progress{ background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.3); color: #3b82f6; }
+    .status-fixed      { background: rgba(107,114,128,0.1); border: 1px solid rgba(107,114,128,0.3); color: #9ca3af; }
+    .status-needs_review{background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3); color: #f59e0b; }
+    .status-rejected   { background: rgba(239,68,68,0.1);  border: 1px solid rgba(239,68,68,0.3); color: #ef4444; }
+    .status-merged     { background: rgba(139,92,246,0.1); border: 1px solid rgba(139,92,246,0.3); color: #a78bfa; }
+    .status-received   { background: rgba(0,180,216,0.1);  border: 1px solid rgba(0,180,216,0.3); color: var(--accent); }
+
+    .report-text-box {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px;
+      font-size: 14px; line-height: 1.6; margin-bottom: 24px;
+    }
+
+    /* Merged notice */
+    #merged-notice {
+      background: rgba(139,92,246,0.1); border: 1px solid rgba(139,92,246,0.3);
+      border-radius: 10px; padding: 14px; margin-bottom: 24px; display: none;
+    }
+    #merged-notice.visible { display: block; }
+    #merged-notice p { font-size: 13px; color: #c4b5fd; margin-bottom: 8px; }
+    #merged-notice a { color: #a78bfa; }
+
+    /* Timeline */
+    h3 { font-size: 14px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 16px; }
+
+    #timeline { position: relative; padding-left: 24px; }
+    #timeline::before {
+      content: ''; position: absolute; left: 7px; top: 0; bottom: 0;
+      width: 2px; background: var(--border);
+    }
+
+    .timeline-event { position: relative; margin-bottom: 20px; }
+    .timeline-dot {
+      position: absolute; left: -24px; top: 3px; width: 14px; height: 14px;
+      border-radius: 50%; background: var(--accent); border: 2px solid var(--bg);
+    }
+    .timeline-dot.done { background: #10b981; }
+    .timeline-event-label { font-weight: 600; font-size: 14px; margin-bottom: 2px; }
+    .timeline-event-meta { font-size: 12px; color: var(--muted); }
+    .timeline-event-detail { font-size: 13px; color: var(--text); margin-top: 4px; }
+
+    @media (max-width: 480px) {
+      .report-meta-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header id="header">
+  <a href="/" aria-label="Back to map">← Map</a>
+  <h1>Follow Your Report</h1>
+</header>
+
+<main id="container">
+  <div id="loading" aria-live="polite" aria-label="Loading report">
+    <div class="spinner-lg"></div>
+    <p>Loading your report…</p>
+  </div>
+
+  <div id="error-state" role="alert">
+    <h2>Report not found</h2>
+    <p>This link may be invalid or the report may have been removed. Check that you copied the full link.</p>
+    <br><a href="/" style="color:var(--accent)">← Back to map</a>
+  </div>
+
+  <div id="report-header" aria-live="polite">
+    <div class="report-id-label">Report ID</div>
+    <div class="report-id-val" id="disp-id">–</div>
+
+    <div class="status-banner" id="status-banner" role="status"></div>
+
+    <div class="report-meta-grid">
+      <div class="meta-card"><div class="label">Type</div><div class="value" id="disp-type">–</div></div>
+      <div class="meta-card"><div class="label">Priority</div><div class="value" id="disp-priority">–</div></div>
+      <div class="meta-card"><div class="label">Zone</div><div class="value" id="disp-zone">–</div></div>
+      <div class="meta-card"><div class="label">Classified by</div><div class="value" id="disp-triaged">–</div></div>
+    </div>
+
+    <div class="report-text-box" id="disp-text"></div>
+
+    <div id="merged-notice">
+      <p>This report has been merged into another report.</p>
+      <a id="merged-link" href="#">View the main report →</a>
+    </div>
+
+    <h3>Timeline</h3>
+    <div id="timeline"></div>
+  </div>
+</main>
+
+<script>
+const params = new URLSearchParams(location.search);
+const id     = params.get('id');
+const token  = params.get('token');
+
+async function load() {
+  if (!id || !token) {
+    showError();
+    return;
+  }
+
+  try {
+    const res  = await fetch(`/api/reports/${encodeURIComponent(id)}/follow?token=${encodeURIComponent(token)}`);
+    if (!res.ok) { showError(); return; }
+    const data = await res.json();
+    render(data);
+  } catch {
+    showError();
+  }
+}
+
+function showError() {
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('error-state').classList.add('visible');
+}
+
+const STATUS_LABELS = {
+  received:     { label: '📬 Received', cls: 'status-received' },
+  needs_review: { label: '🔍 Under review', cls: 'status-needs_review' },
+  published:    { label: '📢 Published — open', cls: 'status-published' },
+  in_progress:  { label: '🔧 In progress', cls: 'status-in_progress' },
+  fixed:        { label: '✅ Fixed!', cls: 'status-fixed' },
+  rejected:     { label: '✗ Not accepted', cls: 'status-rejected' },
+  merged:       { label: '🔗 Merged', cls: 'status-merged' },
+};
+
+const PRIORITY_COLORS = { 1:'#6b7280',2:'#3b82f6',3:'#f59e0b',4:'#f97316',5:'#ef4444' };
+const TYPE_LABELS = { pothole:'Pothole',street_light:'Street light',flooding:'Flooding',rubbish:'Rubbish',not_relevant:'Not relevant' };
+
+function render(data) {
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('report-header').classList.add('visible');
+
+  document.getElementById('disp-id').textContent      = data.id;
+  document.getElementById('disp-type').textContent    = TYPE_LABELS[data.type] || data.type || '–';
+  document.getElementById('disp-zone').textContent    = data.zone || '–';
+  document.getElementById('disp-text').textContent    = data.id ? '' : '–';
+
+  const pEl = document.getElementById('disp-priority');
+  pEl.textContent = data.priority ? `P${data.priority}` : '–';
+  if (data.priority) pEl.style.color = PRIORITY_COLORS[data.priority];
+
+  document.getElementById('disp-triaged').textContent =
+    data.triaged_by === 'model' ? '🤖 AI' : '📋 Rules';
+
+  // Status banner
+  const sInfo = STATUS_LABELS[data.status] || { label: data.status, cls: 'status-received' };
+  const banner = document.getElementById('status-banner');
+  banner.className = `status-banner ${sInfo.cls}`;
+  banner.textContent = sInfo.label;
+
+  // Report text (sanitised)
+  document.getElementById('disp-text').textContent = data.id ? '(report text hidden for privacy)' : '–';
+  // We don't display the text publicly on the follow page to protect submitter info
+
+  // Merged notice
+  if (data.merged_into) {
+    const notice = document.getElementById('merged-notice');
+    notice.classList.add('visible');
+    const link = document.getElementById('merged-link');
+    link.href = `/follow?id=${data.merged_into.id}&token=merged`;
+    link.textContent = `View main report ${data.merged_into.id} →`;
+  }
+
+  // Timeline
+  const timeline = document.getElementById('timeline');
+  const events   = data.timeline || [];
+
+  const FIELD_LABELS = {
+    status:   (e) => `Status changed to ${formatStatus(e.new_value)}`,
+    priority: (e) => `Priority updated to P${e.new_value}`,
+    type:     (e) => `Type changed to ${TYPE_LABELS[e.new_value] || e.new_value}`,
+    merged_into: (e) => `Merged into report ${e.new_value}`,
+  };
+
+  if (events.length === 0) {
+    timeline.innerHTML = '<p style="color:var(--muted);font-size:13px">No events yet.</p>';
+  } else {
+    timeline.innerHTML = events.map((e, i) => {
+      const label = FIELD_LABELS[e.field]?.(e) || `${e.field} changed`;
+      const isDone = i < events.length - 1;
+      return `<div class="timeline-event">
+        <div class="timeline-dot ${isDone ? 'done' : ''}"></div>
+        <div class="timeline-event-label">${escHtml(label)}</div>
+        <div class="timeline-event-meta">${formatTime(e.created_at)}</div>
+      </div>`;
+    }).join('');
+  }
+}
+
+function formatStatus(s) {
+  return STATUS_LABELS[s]?.label.replace(/^[^ ]+ /, '') || s;
+}
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function formatTime(iso) {
+  return new Date(iso).toLocaleString('en-GB', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+
+load();
+</script>
+</body>
+</html>

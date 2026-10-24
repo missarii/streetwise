@@ -1,0 +1,186 @@
+{
+  "city": "Colombo",
+  "note": "Example zones for the challenge. Polygons are [lng, lat].",
+  "zones": [
+    {
+      "id": "Z-01",
+      "name": "Fort and Pettah",
+      "crew": "Crew A",
+      "status": "active",
+      "pause_reason": null,
+      "status_date": null,
+      "polygon": [
+        [
+          79.842,
+          6.929
+        ],
+        [
+          79.862,
+          6.929
+        ],
+        [
+          79.862,
+          6.944
+        ],
+        [
+          79.842,
+          6.944
+        ],
+        [
+          79.842,
+          6.929
+        ]
+      ]
+    },
+    {
+      "id": "Z-02",
+      "name": "Kollupitiya",
+      "crew": "Crew B",
+      "status": "active",
+      "pause_reason": null,
+      "status_date": null,
+      "polygon": [
+        [
+          79.849,
+          6.901
+        ],
+        [
+          79.862,
+          6.901
+        ],
+        [
+          79.862,
+          6.926
+        ],
+        [
+          79.849,
+          6.926
+        ],
+        [
+          79.849,
+          6.901
+        ]
+      ]
+    },
+    {
+      "id": "Z-03",
+      "name": "Borella",
+      "crew": "Crew C",
+      "status": "paused",
+      "pause_reason": "Crew on a flood call",
+      "status_date": "2026-10-26",
+      "polygon": [
+        [
+          79.868,
+          6.906
+        ],
+        [
+          79.889,
+          6.906
+        ],
+        [
+          79.889,
+          6.925
+        ],
+        [
+          79.868,
+          6.925
+        ],
+        [
+          79.868,
+          6.906
+        ]
+      ]
+    },
+    {
+      "id": "Z-04",
+      "name": "Wellawatte",
+      "crew": "Crew D",
+      "status": "active",
+      "pause_reason": null,
+      "status_date": null,
+      "polygon": [
+        [
+          79.856,
+          6.868
+        ],
+        [
+          79.871,
+          6.868
+        ],
+        [
+          79.871,
+          6.898
+        ],
+        [
+          79.856,
+          6.898
+        ],
+        [
+          79.856,
+          6.868
+        ]
+      ]
+    },
+    {
+      "id": "Z-05",
+      "name": "Narahenpita",
+      "crew": "Crew E",
+      "status": "active",
+      "pause_reason": null,
+      "status_date": null,
+      "polygon": [
+        [
+          79.873,
+          6.884
+        ],
+        [
+          79.894,
+          6.884
+        ],
+        [
+          79.894,
+          6.903
+        ],
+        [
+          79.873,
+          6.903
+        ],
+        [
+          79.873,
+          6.884
+        ]
+      ]
+    },
+    {
+      "id": "Z-06",
+      "name": "Rajagiriya",
+      "crew": "Crew F",
+      "status": "active",
+      "pause_reason": null,
+      "status_date": null,
+      "polygon": [
+        [
+          79.893,
+          6.904
+        ],
+        [
+          79.914,
+          6.904
+        ],
+        [
+          79.914,
+          6.924
+        ],
+        [
+          79.893,
+          6.924
+        ],
+        [
+          79.893,
+          6.904
+        ]
+      ]
+    }
+  ]
+}

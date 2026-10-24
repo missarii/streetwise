@@ -1,0 +1,565 @@
+{
+  "note": "40 reports with the right answers, labelled by the priority scale in the README. Measure your triage on these.",
+  "reports": [
+    {
+      "id": "r-0100",
+      "text": "Water lying in the playground for a week, mosquitoes breeding",
+      "lat": 6.9083,
+      "lng": 79.90885,
+      "reported_at": "2026-10-22T19:04+05:30",
+      "photo_url": null,
+      "expected": {
+        "type": "flooding",
+        "size": "medium",
+        "priority": 3,
+        "zone": "Z-06"
+      }
+    },
+    {
+      "id": "r-0101",
+      "text": "Bags dumped behind the bus shelter",
+      "lat": 6.93251,
+      "lng": 79.84895,
+      "reported_at": "2026-10-21T16:03+05:30",
+      "photo_url": null,
+      "expected": {
+        "type": "rubbish",
+        "size": "medium",
+        "priority": 2,
+        "zone": "Z-01"
+      }
+    },
+    {
+      "id": "r-0102",
+      "text": "One lamp out in the quiet lane behind the flats",
+      "lat": 6.88911,
+      "lng": 79.8638,
+      "reported_at": "2026-10-24T13:34+05:30",
+      "photo_url": null,
+      "expected": {
+        "type": "street_light",
+        "size": "small",
+        "priority": 2,
+        "zone": "Z-04"
+      }
+    },
+    {
+      "id": "r-0103",
+      "text": "Burning rubbish next to the houses, thick smoke",
+      "lat": 6.89592,
+      "lng": 79.87897,
+      "reported_at": "2026-10-23T13:29+05:30",
+      "photo_url": null,
+      "expected": {
+        "type": "rubbish",
+        "size": "medium",
+        "priority": 4,
+        "zone": "Z-05"
+      }
+    },
+    {
+      "id": "r-0104",
+      "text": "Wathura full on the road near the station, cannot cross",
+      "lat": 6.91037,
+      "lng": 79.88234,
+      "reported_at": "2026-10-24T16:13+05:30",
+      "photo_url": null,
+      "expected": {
+        "type": "flooding",
+        "size": "large",
+        "priority": 5,
+        "zone": "Z-03"
+      }
+    },
+    {
+      "id": "r-0105",
+      "text": "Can you tell me the bus timetable to Kandy?",
+      "lat": 6.87814,
+      "lng": 79.86304,
+      "reported_at": "2026-10-24T09:30+05:30",
+      "photo_url": null,
+      "expected": {
+        "type": "not_relevant",
+        "size": "small",
+        "priority": 1,
+        "zone": "Z-04"
+      }
+    },
+    {
+      "id": "r-0106",
+      "text": "Live wire sparking from the lamp post near the bus stand",
+      "lat": 6.94363,
+      "lng": 79.85724,
+      "reported_at": "2026-10-22T03:15+05:30",
+      "photo_url": null,
+      "expected": {
+        "type": "street_light",
+        "size": "large",
+        "priority": 5,
+        "zone": "Z-01"
+      }
+    },
+    {
+      "id": "r-0107",
+      "text": "Street light stays on all day, wasting power",
+      "lat": 6.91221,
+      "lng": 79.87825,
+      "reported_at": "2026-10-21T01:50+05:30",
+      "photo_url": null,
+      "expected": {
+        "type": "street_light",
+        "size": "small",
+        "priority": 1,
+        "zone": "Z-03"
+      }
+    },
+    {
+      "id": "r-0108",
+      "text": "Street lights on the hospital road all out tonight",
+      "lat": 6.89355,
+      "lng": 79.88056,
+      "reported_at": "2026-10-23T05:09+05:30",
+      "photo_url": null,
+      "expected": {
+        "type": "street_light",
+        "size": "medium",
+        "priority": 4,
+        "zone": "Z-05"
+      }
+    },
+    {
+      "id": "r-0109",
+      "text": "Lost my wallet near the station, did anyone find it?",
+      "lat": 6.938,
+      "lng": 79.85137,
+      "reported_at": "2026-10-20T21:15+05:30",
+      "photo_url": null,
+      "expected": {
+        "type": "not_relevant",
+        "size": "small",
+        "priority": 1,
+        "zone": "Z-01"
+      }
+    },
+    {
+      "id": "r-0110",
+      "text": "Bumps on the side road from the old repair, cars scraping",
+      "lat": 6.89024,
+      "lng": 79.88693,
+      "reported_at": "2026-10-22T13:42+05:30",
+      "photo_url": null,
+      "expected": {
+        "type": "pothole",
+        "size": "small",
+        "priority": 2,
+        "zone": "Z-05"
+      }
+    },
+    {
+      "id": "r-0111",
+      "text": "Nails and metal scraps across the road from a truck",
+      "lat": 6.90858,
+      "lng": 79.86915,
+      "reported_at": "2026-10-22T22:57+05:30",
+      "photo_url": null,
+      "expected": {
+        "type": "rubbish",
+        "size": "medium",
+        "priority": 4,
+        "zone": "Z-03"
+      }
+    },
+    {
+      "id": "r-0112",
+      "text": "Lights very dim on the railway underpass, hard to see the steps",
+      "lat": 6.8974,
+      "lng": 79.86557,
+      "reported_at": "2026-10-24T00:46+05:30",
+      "photo_url": null,
+      "expected": {
+        "type": "street_light",
+        "size": "medium",
+        "priority": 3,
+        "zone": "Z-04"
+      }
+    },
+    {
+      "id": "r-0113",
+      "text": "Shop owner was rude to me",
+      "lat": 6.89112,
+      "lng": 79.8605,
+      "reported_at": "2026-10-24T22:15+05:30",
+      "photo_url": null,
+      "expected": {
+        "type": "not_relevant",
+        "size": "small",
+        "priority": 1,
+        "zone": "Z-04"
+      }
+    },
+    {
+      "id": "r-0114",
+      "text": "Water rising toward the school entrance, children waiting outside",
+      "lat": 6.92489,
+      "lng": 79.87792,
+      "reported_at": "2026-10-24T20:44+05:30",
+      "photo_url": null,
+      "expected": {
+        "type": "flooding",
+        "size": "medium",
+        "priority": 4,
+        "zone": "Z-03"
+      }
+    },
+    {
+      "id": "r-0115",
+      "text": "Test test 123",
+      "lat": 6.87161,
+      "lng": 79.86243,
+      "reported_at": "2026-10-23T08:36+05:30",
+      "photo_url": null,
+      "expected": {
+        "type": "not_relevant",
+        "size": "small",
+        "priority": 1,
+        "zone": "Z-04"
+      }
+    },
+    {
+      "id": "r-0116",
+      "text": "I want to apply for a job at the council",
+      "lat": 6.88408,
+      "lng": 79.88042,
+      "reported_at": "2026-10-20T12:36+05:30",
+      "photo_url": null,
+      "expected": {
+        "type": "not_relevant",
+        "size": "small",
+        "priority": 1,
+        "zone": "Z-05"
+      }
+    },
+    {
+      "id": "r-0117",
+      "text": "Old mattress dumped in the lane",
+      "lat": 6.89347,
+      "lng": 79.86532,
+      "reported_at": "2026-10-21T07:25+05:30",
+      "photo_url": null,
+      "expected": {
+        "type": "rubbish",
+        "size": "medium",
+        "priority": 2,
+        "zone": "Z-04"
+      }
+    },
+    {
+      "id": "r-0118",
+      "text": "Small crack getting bigger near the school gate, kids walk over it every day",
+      "lat": 6.93311,
+      "lng": 79.84807,
+      "reported_at": "2026-10-20T21:14+05:30",
+      "photo_url": null,
+      "expected": {
+        "type": "pothole",
+        "size": "small",
+        "priority": 4,
+        "zone": "Z-01"
+      }
+    },
+    {
+      "id": "r-0119",
+      "text": "Bridge railing missing a section over the canal, a drop of 3 metres",
+      "lat": 6.93787,
+      "lng": 79.85414,
+      "reported_at": "2026-10-21T03:38+05:30",
+      "photo_url": null,
+      "expected": {
+        "type": "pothole",
+        "size": "large",
+        "priority": 5,
+        "zone": "Z-01"
+      }
+    },
+    {
+      "id": "r-0120",
+      "text": "Storm drain grate missing, water and a big open hole",
+      "lat": 6.88397,
+      "lng": 79.86003,
+      "reported_at": "2026-10-20T19:26+05:30",
+      "photo_url": null,
+      "expected": {
+        "type": "flooding",
+        "size": "medium",
+        "priority": 5,
+        "zone": "Z-04"
+      }
+    },
+    {
+      "id": "r-0121",
+      "text": "Rotting food dumped behind the restaurant, rats in the daytime",
+      "lat": 6.93899,
+      "lng": 79.85695,
+      "reported_at": "2026-10-22T01:40+05:30",
+      "photo_url": null,
+      "expected": {
+        "type": "rubbish",
+        "size": "medium",
+        "priority": 3,
+        "zone": "Z-01"
+      }
+    },
+    {
+      "id": "r-0122",
+      "text": "Market bins overflowing into the drain",
+      "lat": 6.91158,
+      "lng": 79.89518,
+      "reported_at": "2026-10-22T17:10+05:30",
+      "photo_url": null,
+      "expected": {
+        "type": "rubbish",
+        "size": "large",
+        "priority": 3,
+        "zone": "Z-06"
+      }
+    },
+    {
+      "id": "r-0123",
+      "text": "Flood water reaching the clinic steps, patients waiting",
+      "lat": 6.92582,
+      "lng": 79.85199,
+      "reported_at": "2026-10-20T12:27+05:30",
+      "photo_url": null,
+      "expected": {
+        "type": "flooding",
+        "size": "medium",
+        "priority": 4,
+        "zone": "Z-02"
+      }
+    },
+    {
+      "id": "r-0124",
+      "text": "Broken glass spread across the footpath",
+      "lat": 6.92311,
+      "lng": 79.85398,
+      "reported_at": "2026-10-22T20:48+05:30",
+      "photo_url": null,
+      "expected": {
+        "type": "rubbish",
+        "size": "small",
+        "priority": 3,
+        "zone": "Z-02"
+      }
+    },
+    {
+      "id": "r-0125",
+      "text": "Lamp at the steps has been off for 3 nights",
+      "lat": 6.88439,
+      "lng": 79.8577,
+      "reported_at": "2026-10-23T21:02+05:30",
+      "photo_url": null,
+      "expected": {
+        "type": "street_light",
+        "size": "small",
+        "priority": 2,
+        "zone": "Z-04"
+      }
+    },
+    {
+      "id": "r-0126",
+      "text": "Manhole cover missing on the pavement, open hole about half a metre",
+      "lat": 6.90934,
+      "lng": 79.9138,
+      "reported_at": "2026-10-24T15:44+05:30",
+      "photo_url": null,
+      "expected": {
+        "type": "pothole",
+        "size": "medium",
+        "priority": 5,
+        "zone": "Z-06"
+      }
+    },
+    {
+      "id": "r-0127",
+      "text": "Uneven patch after the pipe works, bikes swerving around it",
+      "lat": 6.91563,
+      "lng": 79.85401,
+      "reported_at": "2026-10-20T15:52+05:30",
+      "photo_url": null,
+      "expected": {
+        "type": "pothole",
+        "size": "medium",
+        "priority": 3,
+        "zone": "Z-02"
+      }
+    },
+    {
+      "id": "r-0128",
+      "text": "Pothole at the roundabout, motorbikes braking hard",
+      "lat": 6.90662,
+      "lng": 79.86016,
+      "reported_at": "2026-10-20T17:35+05:30",
+      "photo_url": null,
+      "expected": {
+        "type": "pothole",
+        "size": "medium",
+        "priority": 3,
+        "zone": "Z-02"
+      }
+    },
+    {
+      "id": "r-0129",
+      "text": "Someone left a chair on the pavement",
+      "lat": 6.91484,
+      "lng": 79.91232,
+      "reported_at": "2026-10-24T16:36+05:30",
+      "photo_url": null,
+      "expected": {
+        "type": "rubbish",
+        "size": "small",
+        "priority": 1,
+        "zone": "Z-06"
+      }
+    },
+    {
+      "id": "r-0130",
+      "text": "Deep pothole right at the bus stop, a scooter nearly fell this morning",
+      "lat": 6.90764,
+      "lng": 79.89686,
+      "reported_at": "2026-10-24T22:52+05:30",
+      "photo_url": null,
+      "expected": {
+        "type": "pothole",
+        "size": "medium",
+        "priority": 4,
+        "zone": "Z-06"
+      }
+    },
+    {
+      "id": "r-0131",
+      "text": "Little dip in the road by the shop, only noticeable in the rain",
+      "lat": 6.89871,
+      "lng": 79.89299,
+      "reported_at": "2026-10-24T04:09+05:30",
+      "photo_url": null,
+      "expected": {
+        "type": "pothole",
+        "size": "small",
+        "priority": 1,
+        "zone": "Z-05"
+      }
+    },
+    {
+      "id": "r-0132",
+      "text": "Road eka full broken near the junction, three wheelers jumping",
+      "lat": 6.9108,
+      "lng": 79.88328,
+      "reported_at": "2026-10-24T04:03+05:30",
+      "photo_url": null,
+      "expected": {
+        "type": "pothole",
+        "size": "medium",
+        "priority": 3,
+        "zone": "Z-03"
+      }
+    },
+    {
+      "id": "r-0133",
+      "text": "Underpass filling with water, a car stalled inside",
+      "lat": 6.91255,
+      "lng": 79.86185,
+      "reported_at": "2026-10-21T08:44+05:30",
+      "photo_url": null,
+      "expected": {
+        "type": "flooding",
+        "size": "large",
+        "priority": 5,
+        "zone": "Z-02"
+      }
+    },
+    {
+      "id": "r-0134",
+      "text": "Pothole filled with water outside the hospital entrance, ambulances slowing down",
+      "lat": 6.92437,
+      "lng": 79.87199,
+      "reported_at": "2026-10-20T10:26+05:30",
+      "photo_url": null,
+      "expected": {
+        "type": "pothole",
+        "size": "medium",
+        "priority": 4,
+        "zone": "Z-03"
+      }
+    },
+    {
+      "id": "r-0135",
+      "text": "Bin lid broken at the bus stand",
+      "lat": 6.93894,
+      "lng": 79.85249,
+      "reported_at": "2026-10-20T08:49+05:30",
+      "photo_url": null,
+      "expected": {
+        "type": "rubbish",
+        "size": "small",
+        "priority": 1,
+        "zone": "Z-01"
+      }
+    },
+    {
+      "id": "r-0136",
+      "text": "Road slightly wet near the tap stand all day",
+      "lat": 6.8847,
+      "lng": 79.89363,
+      "reported_at": "2026-10-20T13:59+05:30",
+      "photo_url": null,
+      "expected": {
+        "type": "flooding",
+        "size": "small",
+        "priority": 1,
+        "zone": "Z-05"
+      }
+    },
+    {
+      "id": "r-0137",
+      "text": "Light flickering at the library corner but still on",
+      "lat": 6.89726,
+      "lng": 79.87031,
+      "reported_at": "2026-10-24T19:52+05:30",
+      "photo_url": null,
+      "expected": {
+        "type": "street_light",
+        "size": "small",
+        "priority": 1,
+        "zone": "Z-04"
+      }
+    },
+    {
+      "id": "r-0138",
+      "text": "Drain cover blocked with leaves, water slow to go down",
+      "lat": 6.89774,
+      "lng": 79.87328,
+      "reported_at": "2026-10-21T15:01+05:30",
+      "photo_url": null,
+      "expected": {
+        "type": "flooding",
+        "size": "small",
+        "priority": 2,
+        "zone": "Z-05"
+      }
+    },
+    {
+      "id": "r-0139",
+      "text": "Street light out near the bus halt, 2 weeks now",
+      "lat": 6.88485,
+      "lng": 79.88638,
+      "reported_at": "2026-10-24T11:06+05:30",
+      "photo_url": null,
+      "expected": {
+        "type": "street_light",
+        "size": "small",
+        "priority": 3,
+        "zone": "Z-05"
+      }
+    }
+  ]
+}

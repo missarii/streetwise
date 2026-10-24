@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Settings — Streetwise Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:#0d0f14;--surface:#161921;--surface2:#1e2230;--border:#2a2f40;
+      --text:#e2e8f0;--muted:#8892a4;--accent:#00b4d8;--accent-dim:#005f73;
+      --font:'Inter',system-ui,sans-serif;
+    }
+    body { background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px; }
+    #layout { display:flex;min-height:100vh; }
+    #sidenav { width:220px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:20px 0;flex-shrink:0; }
+    #sidenav .logo { font-size:18px;font-weight:800;color:var(--accent);padding:0 20px 20px;border-bottom:1px solid var(--border); }
+    #sidenav .logo span { color:var(--text); }
+    .nav-section { padding:16px 20px 8px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px; }
+    .nav-link { display:flex;align-items:center;gap:10px;padding:9px 20px;text-decoration:none;color:var(--muted);font-size:13px;transition:all 0.15s;border-left:3px solid transparent; }
+    .nav-link:hover { color:var(--text);background:var(--surface2); }
+    .nav-link.active { color:var(--accent);border-left-color:var(--accent);background:var(--accent-dim); }
+    .nav-bottom { margin-top:auto;padding:16px 20px;border-top:1px solid var(--border); }
+    #logout-btn { width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:none;color:var(--muted);font-family:var(--font);cursor:pointer;font-size:13px; }
+    #logout-btn:hover { color:var(--text); }
+
+    #content { flex:1;padding:28px;overflow-y:auto;max-width:700px; }
+    h1 { font-size:22px;font-weight:800;margin-bottom:4px; }
+    #page-desc { color:var(--muted);font-size:13px;margin-bottom:28px; }
+
+    .settings-section { background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px; }
+    .settings-section h2 { font-size:14px;font-weight:700;margin-bottom:16px;color:var(--accent); }
+
+    label { display:block;font-size:12px;color:var(--muted);margin-bottom:5px; }
+    input[type=text],input[type=number] { width:100%;padding:9px 12px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:var(--font);font-size:14px;margin-bottom:14px; }
+    input:focus { outline:none;border-color:var(--accent); }
+
+    .thresholds-row { display:grid;grid-template-columns:1fr 1fr;gap:16px; }
+
+    .save-btn { padding:10px 24px;border-radius:8px;border:none;background:var(--accent);color:#fff;font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;transition:background 0.15s; }
+    .save-btn:hover { background:#0096b7; }
+
+    #toast { position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 20px;font-size:14px;font-weight:600;transition:transform 0.25s;z-index:999; }
+    #toast.show { transform:translateX(-50%) translateY(0); }
+    #toast.ok { border-color:#10b981;color:#10b981; }
+    #toast.err { border-color:#ef4444;color:#ef4444; }
+
+    .note { font-size:12px;color:var(--muted);margin-top:-10px;margin-bottom:14px; }
+    @media(max-width:900px){ #sidenav{display:none;} }
+  </style>
+</head>
+<body>
+<div id="layout">
+  <nav id="sidenav" aria-label="Staff navigation">
+    <div class="logo">Street<span>wise</span></div>
+    <div class="nav-section">Work</div>
+    <a href="/staff/queue"    class="nav-link">📋 Review queue</a>
+    <div class="nav-section">Admin</div>
+    <a href="/staff/zones"    class="nav-link">🗺️ Zones</a>
+    <a href="/staff/settings" class="nav-link active">⚙️ Settings</a>
+    <a href="/staff/audit"    class="nav-link">📜 Audit log</a>
+    <div class="nav-section">Public</div>
+    <a href="/" class="nav-link">🌍 Public map</a>
+    <div class="nav-bottom">
+      <button id="logout-btn">Sign out</button>
+    </div>
+  </nav>
+  <main id="content">
+    <h1>Settings</h1>
+    <p id="page-desc">Configuration saved here takes effect immediately with no redeploy needed.</p>
+
+    <!-- Routing thresholds -->
+    <div class="settings-section">
+      <h2>⚖️ Routing thresholds</h2>
+      <div class="thresholds-row">
+        <div>
+          <label for="s-priority-thresh">Approval priority threshold (default 4)</label>
+          <input type="number" id="s-priority-thresh" min="1" max="5" step="1" value="4" />
+        </div>
+        <div>
+          <label for="s-confidence-thresh">Approval confidence threshold (default 0.7)</label>
+          <input type="number" id="s-confidence-thresh" min="0" max="1" step="0.05" value="0.7" />
+        </div>
+      </div>
+      <p class="note">Reports at or above priority threshold, or below confidence threshold, go to staff review.</p>
+      <button class="save-btn" onclick="saveThresholds()">Save thresholds</button>
+    </div>
+
+    <!-- Triage timeouts -->
+    <div class="settings-section">
+      <h2>🤖 AI triage</h2>
+      <label for="s-timeout">Model timeout (ms, default 8000)</label>
+      <input type="number" id="s-timeout" min="1000" max="30000" step="500" value="8000" />
+      <label for="s-retries">Model retries (default 1)</label>
+      <input type="number" id="s-retries" min="0" max="3" step="1" value="1" />
+      <button class="save-btn" onclick="saveTriage()">Save triage config</button>
+    </div>
+
+    <!-- Counter names -->
+    <div class="settings-section">
+      <h2>📊 Counter labels</h2>
+      <label for="s-metric-open">Open reports label</label>
+      <input type="text" id="s-metric-open" value="open reports" />
+      <label for="s-metric-30d">Fixed 30d label</label>
+      <input type="text" id="s-metric-30d" value="fixed in the last 30 days" />
+      <label for="s-metric-total">Fixed total label</label>
+      <input type="text" id="s-metric-total" value="issues fixed, and counting" />
+      <button class="save-btn" onclick="saveMetrics()">Save labels</button>
+    </div>
+  </main>
+</div>
+<div id="toast" role="alert" aria-live="polite"></div>
+
+<script>
+function toast(msg, type = 'ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = `show ${type}`;
+  setTimeout(() => { t.className = ''; }, 3000);
+}
+
+async function load() {
+  const res = await fetch('/api/staff/settings', { credentials: 'include' });
+  if (res.status === 401) { window.location.href = '/staff/login'; return; }
+  if (res.status === 403) { document.getElementById('content').innerHTML = '<div style="padding:40px;color:var(--muted)">Admin access required.</div>'; return; }
+  const { settings } = await res.json();
+
+  if (settings.rules) {
+    document.getElementById('s-priority-thresh').value  = settings.rules.approval_priority_at_or_above ?? 4;
+    document.getElementById('s-confidence-thresh').value = settings.rules.approval_confidence_below ?? 0.7;
+  }
+  if (settings.triage) {
+    document.getElementById('s-timeout').value  = settings.triage.model_timeout_ms ?? 8000;
+    document.getElementById('s-retries').value  = settings.triage.model_retries    ?? 1;
+  }
+  if (settings.metrics) {
+    document.getElementById('s-metric-open').value  = settings.metrics.open         ?? '';
+    document.getElementById('s-metric-30d').value   = settings.metrics.fixed_30d   ?? '';
+    document.getElementById('s-metric-total').value = settings.metrics.fixed_total  ?? '';
+  }
+}
+
+async function saveSettings(body) {
+  const res = await fetch('/api/staff/settings', {
+    method: 'PUT', credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (res.ok) toast('✓ Saved successfully.');
+  else toast('Save failed.', 'err');
+}
+
+function saveThresholds() {
+  saveSettings({
+    rules: {
+      approval_priority_at_or_above: Number(document.getElementById('s-priority-thresh').value),
+      approval_confidence_below:     Number(document.getElementById('s-confidence-thresh').value),
+      reject_types: ['not_relevant'],
+    }
+  });
+}
+function saveTriage() {
+  saveSettings({
+    triage: {
+      model_timeout_ms: Number(document.getElementById('s-timeout').value),
+      model_retries:    Number(document.getElementById('s-retries').value),
+    }
+  });
+}
+function saveMetrics() {
+  saveSettings({
+    metrics: {
+      open:        document.getElementById('s-metric-open').value,
+      fixed_30d:   document.getElementById('s-metric-30d').value,
+      fixed_total: document.getElementById('s-metric-total').value,
+    }
+  });
+}
+
+document.getElementById('logout-btn').addEventListener('click', async () => {
+  await fetch('/api/staff/logout', { method: 'POST', credentials: 'include' });
+  window.location.href = '/staff/login';
+});
+
+load();
+</script>
+</body>
+</html>

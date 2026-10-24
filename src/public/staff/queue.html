@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Review Queue — Streetwise Staff</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0d0f14; --surface: #161921; --surface2: #1e2230; --border: #2a2f40;
+      --text: #e2e8f0; --muted: #8892a4; --accent: #00b4d8; --accent-dim: #005f73;
+      --p1:#6b7280;--p2:#3b82f6;--p3:#f59e0b;--p4:#f97316;--p5:#ef4444;
+      --font: 'Inter', system-ui, sans-serif;
+    }
+    body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; min-height: 100vh; }
+
+    /* Sidebar nav */
+    #layout { display: flex; min-height: 100vh; }
+    #sidenav {
+      width: 220px; background: var(--surface); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; padding: 20px 0; flex-shrink: 0;
+    }
+    #sidenav .logo { font-size: 18px; font-weight: 800; color: var(--accent); padding: 0 20px 20px; border-bottom: 1px solid var(--border); }
+    #sidenav .logo span { color: var(--text); }
+    .nav-section { padding: 16px 20px 8px; font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; }
+    .nav-link {
+      display: flex; align-items: center; gap: 10px; padding: 9px 20px; text-decoration: none;
+      color: var(--muted); font-size: 13px; transition: all 0.15s; border-left: 3px solid transparent;
+    }
+    .nav-link:hover { color: var(--text); background: var(--surface2); }
+    .nav-link.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-dim); }
+    .nav-bottom { margin-top: auto; padding: 16px 20px; border-top: 1px solid var(--border); }
+    #logout-btn { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: none; color: var(--muted); font-family: var(--font); cursor: pointer; font-size: 13px; }
+    #logout-btn:hover { color: var(--text); border-color: var(--text); }
+
+    /* Content */
+    #content { flex: 1; padding: 28px; overflow-y: auto; }
+    #page-header { margin-bottom: 24px; }
+    #page-header h1 { font-size: 22px; font-weight: 800; }
+    #page-header p { color: var(--muted); font-size: 13px; margin-top: 4px; }
+
+    /* Summary cards */
+    #summary-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 28px; }
+    .summary-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px;
+      text-align: center;
+    }
+    .summary-card .num { font-size: 28px; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .summary-card .lbl { font-size: 11px; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .num-hp { color: var(--p5); } .num-lc { color: var(--p3); }
+    .num-nr { color: var(--muted); } .num-total { color: var(--accent); }
+
+    /* Table */
+    #queue-table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; }
+    thead th { padding: 12px 16px; text-align: left; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); font-weight: 600; }
+    tbody tr { border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.1s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--surface2); }
+    tbody td { padding: 13px 16px; font-size: 13px; }
+
+    .pri-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 26px; height: 26px; border-radius: 6px; font-weight: 800; font-size: 13px; color: #fff;
+    }
+
+    .text-cell { max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .reason-tag {
+      display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600;
+    }
+    .rt-hp { background: rgba(239,68,68,0.15); color: #ef4444; }
+    .rt-lc { background: rgba(245,158,11,0.15); color: #f59e0b; }
+    .rt-nr { background: rgba(107,114,128,0.15); color: #9ca3af; }
+    .rt-dup { background: rgba(139,92,246,0.15); color: #a78bfa; }
+
+    .time-cell { color: var(--muted); white-space: nowrap; }
+
+    /* Loading/empty */
+    .state-msg { padding: 60px 20px; text-align: center; color: var(--muted); }
+    .state-msg p { font-size: 14px; margin-top: 8px; }
+
+    /* Mobile */
+    @media (max-width: 900px) {
+      #sidenav { display: none; }
+      #summary-cards { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 600px) {
+      #content { padding: 16px; }
+      #summary-cards { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+<div id="layout">
+  <!-- Sidebar nav -->
+  <nav id="sidenav" aria-label="Staff navigation">
+    <div class="logo">Street<span>wise</span></div>
+    <div class="nav-section">Work</div>
+    <a href="/staff/queue"    class="nav-link active" id="nav-queue">📋 Review queue</a>
+    <div class="nav-section">Admin</div>
+    <a href="/staff/zones"    class="nav-link" id="nav-zones">🗺️ Zones</a>
+    <a href="/staff/settings" class="nav-link" id="nav-settings">⚙️ Settings</a>
+    <a href="/staff/audit"    class="nav-link" id="nav-audit">📜 Audit log</a>
+    <div class="nav-section">Public</div>
+    <a href="/" class="nav-link">🌍 Public map</a>
+    <div class="nav-bottom">
+      <button id="logout-btn">Sign out</button>
+    </div>
+  </nav>
+
+  <!-- Main content -->
+  <main id="content">
+    <div id="page-header">
+      <h1>Review Queue</h1>
+      <p>Reports requiring human judgement, most urgent first.</p>
+    </div>
+
+    <!-- Summary counts -->
+    <div id="summary-cards" role="region" aria-label="Queue summary">
+      <div class="summary-card"><div class="num num-hp" id="cnt-hp">–</div><div class="lbl">High priority</div></div>
+      <div class="summary-card"><div class="num num-lc" id="cnt-lc">–</div><div class="lbl">Low confidence</div></div>
+      <div class="summary-card"><div class="num num-nr" id="cnt-nr">–</div><div class="lbl">Not relevant</div></div>
+      <div class="summary-card"><div class="num num-total" id="cnt-total">–</div><div class="lbl">Total pending</div></div>
+    </div>
+
+    <!-- Queue table -->
+    <div id="queue-table-wrap">
+      <div id="loading-state" class="state-msg" aria-live="polite">
+        <p>Loading queue…</p>
+      </div>
+      <div id="empty-state" class="state-msg" style="display:none">
+        <p style="font-size:40px">✅</p>
+        <p>Queue is clear! No reports need review right now.</p>
+      </div>
+      <table id="queue-table" style="display:none" aria-label="Review queue">
+        <thead>
+          <tr>
+            <th>P</th>
+            <th>Description</th>
+            <th>Type</th>
+            <th>Zone</th>
+            <th>Reason</th>
+            <th>Received</th>
+          </tr>
+        </thead>
+        <tbody id="queue-body"></tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<script>
+const PRIORITY_COLORS = {1:'#6b7280',2:'#3b82f6',3:'#f59e0b',4:'#f97316',5:'#ef4444'};
+const TYPE_LABELS = {pothole:'Pothole',street_light:'Street light',flooding:'Flooding',rubbish:'Rubbish',not_relevant:'Not relevant'};
+
+async function load() {
+  try {
+    const res  = await fetch('/api/staff/queue', { credentials: 'include' });
+    if (res.status === 401) { window.location.href = '/staff/login'; return; }
+    const data = await res.json();
+    renderQueue(data);
+  } catch {
+    document.getElementById('loading-state').innerHTML = '<p style="color:#ef4444">Failed to load queue. Please refresh.</p>';
+  }
+}
+
+function renderQueue({ counts, reports }) {
+  document.getElementById('cnt-hp').textContent    = counts.highPriority;
+  document.getElementById('cnt-lc').textContent    = counts.lowConfidence;
+  document.getElementById('cnt-nr').textContent    = counts.notRelevant;
+  document.getElementById('cnt-total').textContent = reports.length;
+
+  document.getElementById('loading-state').style.display = 'none';
+
+  if (reports.length === 0) {
+    document.getElementById('empty-state').style.display = 'block';
+    return;
+  }
+
+  const table = document.getElementById('queue-table');
+  const tbody = document.getElementById('queue-body');
+  table.style.display = 'table';
+
+  tbody.innerHTML = reports.map(r => {
+    const color  = PRIORITY_COLORS[r.priority] || '#6b7280';
+    const reason = getReviewReason(r);
+    return `<tr data-id="${r.id}" tabindex="0" role="row" aria-label="Priority ${r.priority} report">
+      <td><div class="pri-badge" style="background:${color}">${r.priority}</div></td>
+      <td class="text-cell">${escHtml(r.text)}</td>
+      <td>${TYPE_LABELS[r.type] || r.type}</td>
+      <td>${r.zone}</td>
+      <td>${reason}</td>
+      <td class="time-cell">${relTime(r.created_at)}</td>
+    </tr>`;
+  }).join('');
+
+  tbody.querySelectorAll('tr').forEach(tr => {
+    tr.addEventListener('click', () => window.location.href = `/staff/review?id=${tr.dataset.id}`);
+    tr.addEventListener('keydown', e => { if (e.key === 'Enter') window.location.href = `/staff/review?id=${tr.dataset.id}`; });
+  });
+}
+
+function getReviewReason(r) {
+  if (r.priority >= 4)       return `<span class="reason-tag rt-hp">High priority</span>`;
+  if (r.confidence < 0.7)    return `<span class="reason-tag rt-lc">Low confidence</span>`;
+  if (r.type === 'not_relevant') return `<span class="reason-tag rt-nr">Not relevant</span>`;
+  return `<span class="reason-tag rt-lc">Review needed</span>`;
+}
+
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function relTime(iso) {
+  const d = Math.floor((Date.now() - new Date(iso)) / 60000);
+  if (d < 60) return `${d}m ago`;
+  if (d < 1440) return `${Math.floor(d/60)}h ago`;
+  return `${Math.floor(d/1440)}d ago`;
+}
+
+document.getElementById('logout-btn').addEventListener('click', async () => {
+  await fetch('/api/staff/logout', { method: 'POST', credentials: 'include' });
+  window.location.href = '/staff/login';
+});
+
+load();
+</script>
+</body>
+</html>

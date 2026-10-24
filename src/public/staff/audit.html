@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Audit Log — Streetwise Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:#0d0f14;--surface:#161921;--surface2:#1e2230;--border:#2a2f40;
+      --text:#e2e8f0;--muted:#8892a4;--accent:#00b4d8;--accent-dim:#005f73;
+      --font:'Inter',system-ui,sans-serif;
+    }
+    body { background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px; }
+    #layout { display:flex;min-height:100vh; }
+    #sidenav { width:220px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:20px 0;flex-shrink:0; }
+    #sidenav .logo { font-size:18px;font-weight:800;color:var(--accent);padding:0 20px 20px;border-bottom:1px solid var(--border); }
+    #sidenav .logo span { color:var(--text); }
+    .nav-section { padding:16px 20px 8px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px; }
+    .nav-link { display:flex;align-items:center;gap:10px;padding:9px 20px;text-decoration:none;color:var(--muted);font-size:13px;transition:all 0.15s;border-left:3px solid transparent; }
+    .nav-link:hover { color:var(--text);background:var(--surface2); }
+    .nav-link.active { color:var(--accent);border-left-color:var(--accent);background:var(--accent-dim); }
+    .nav-bottom { margin-top:auto;padding:16px 20px;border-top:1px solid var(--border); }
+    #logout-btn { width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:none;color:var(--muted);font-family:var(--font);cursor:pointer;font-size:13px; }
+    #logout-btn:hover { color:var(--text); }
+
+    #content { flex:1;padding:28px;overflow-y:auto; }
+    h1 { font-size:22px;font-weight:800;margin-bottom:4px; }
+    #page-desc { color:var(--muted);font-size:13px;margin-bottom:20px; }
+
+    #filters { display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap; }
+    #filters input, #filters select {
+      padding:8px 12px;border-radius:7px;border:1px solid var(--border);
+      background:var(--surface2);color:var(--text);font-family:var(--font);font-size:13px;
+    }
+    #filters input:focus, #filters select:focus { outline:none;border-color:var(--accent); }
+    #filter-btn { padding:8px 16px;border-radius:7px;border:none;background:var(--accent);color:#fff;font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer; }
+
+    #audit-wrap { background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden; }
+    table { width:100%;border-collapse:collapse; }
+    thead th { padding:11px 14px;text-align:left;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid var(--border);font-weight:600;white-space:nowrap; }
+    tbody tr { border-bottom:1px solid var(--border); }
+    tbody tr:last-child { border-bottom:none; }
+    tbody td { padding:12px 14px;font-size:13px;vertical-align:top; }
+    .actor-cell { font-weight:600;color:var(--accent);white-space:nowrap; }
+    .system { color:var(--muted);font-weight:normal; }
+    .field-cell { color:var(--text); }
+    .change-cell { font-size:12px;color:var(--muted); }
+    .arrow { color:var(--accent); }
+    .report-link { color:var(--accent);text-decoration:none;font-variant-numeric:tabular-nums; }
+    .report-link:hover { text-decoration:underline; }
+    .time-cell { color:var(--muted);white-space:nowrap;font-size:12px; }
+
+    .state-msg { padding:60px;text-align:center;color:var(--muted); }
+    #load-more { display:block;width:100%;padding:12px;background:none;border:none;border-top:1px solid var(--border);color:var(--accent);font-family:var(--font);font-size:13px;cursor:pointer;text-align:center; }
+    #load-more:hover { background:var(--surface2); }
+    @media(max-width:900px){ #sidenav{display:none;} }
+    @media(max-width:600px){ #content{padding:16px;} thead th:nth-child(4){display:none;} tbody td:nth-child(4){display:none;} }
+  </style>
+</head>
+<body>
+<div id="layout">
+  <nav id="sidenav" aria-label="Staff navigation">
+    <div class="logo">Street<span>wise</span></div>
+    <div class="nav-section">Work</div>
+    <a href="/staff/queue"    class="nav-link">📋 Review queue</a>
+    <div class="nav-section">Admin</div>
+    <a href="/staff/zones"    class="nav-link">🗺️ Zones</a>
+    <a href="/staff/settings" class="nav-link">⚙️ Settings</a>
+    <a href="/staff/audit"    class="nav-link active">📜 Audit log</a>
+    <div class="nav-section">Public</div>
+    <a href="/" class="nav-link">🌍 Public map</a>
+    <div class="nav-bottom">
+      <button id="logout-btn">Sign out</button>
+    </div>
+  </nav>
+  <main id="content">
+    <h1>Audit Log</h1>
+    <p id="page-desc">Every change to every report, newest first.</p>
+
+    <div id="filters">
+      <select id="filter-actor" aria-label="Filter by person">
+        <option value="">All people</option>
+      </select>
+      <input type="text" id="filter-report" placeholder="Report ID…" aria-label="Filter by report ID" style="width:160px" />
+      <button id="filter-btn" onclick="load(true)">Filter</button>
+    </div>
+
+    <div id="audit-wrap">
+      <div id="loading-state" class="state-msg" aria-live="polite">Loading audit log…</div>
+      <table id="audit-table" style="display:none" aria-label="Audit log">
+        <thead>
+          <tr>
+            <th>Who</th>
+            <th>What changed</th>
+            <th>Report</th>
+            <th>When</th>
+          </tr>
+        </thead>
+        <tbody id="audit-body"></tbody>
+      </table>
+      <button id="load-more" style="display:none" onclick="loadMore()">Load more</button>
+    </div>
+  </main>
+</div>
+
+<script>
+let offset = 0;
+const LIMIT = 50;
+
+async function load(reset = false) {
+  if (reset) offset = 0;
+  const actor     = document.getElementById('filter-actor').value;
+  const reportId  = document.getElementById('filter-report').value.trim();
+  const qs        = new URLSearchParams({ limit: LIMIT, offset });
+  if (actor)    qs.set('actor', actor);
+  if (reportId) qs.set('report_id', reportId);
+
+  const res = await fetch(`/api/staff/audit?${qs}`, { credentials: 'include' });
+  if (res.status === 401) { window.location.href = '/staff/login'; return; }
+  if (res.status === 403) {
+    document.getElementById('loading-state').textContent = 'Admin access required.';
+    return;
+  }
+  const { events, actors } = await res.json();
+
+  document.getElementById('loading-state').style.display = 'none';
+
+  // Populate actor filter (first load only)
+  if (reset || offset === 0) {
+    const sel = document.getElementById('filter-actor');
+    const curr = sel.value;
+    sel.innerHTML = '<option value="">All people</option>' +
+      actors.map(a => `<option value="${a.actor}" ${a.actor === curr ? 'selected' : ''}>${a.actor}</option>`).join('');
+  }
+
+  const tbody = document.getElementById('audit-body');
+  if (reset) tbody.innerHTML = '';
+
+  if (events.length === 0 && offset === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:40px">No events found.</td></tr>';
+    document.getElementById('load-more').style.display = 'none';
+  } else {
+    document.getElementById('audit-table').style.display = 'table';
+    tbody.innerHTML += events.map(e => `
+      <tr>
+        <td class="actor-cell ${e.actor === 'system' ? 'system' : ''}">${escHtml(e.actor)}</td>
+        <td class="field-cell">
+          <strong>${e.field}</strong>
+          <div class="change-cell">${escHtml(e.old_value || '–')} <span class="arrow">→</span> ${escHtml(e.new_value || '–')}</div>
+        </td>
+        <td><a class="report-link" href="/staff/review?id=${e.report_id}">${e.report_id}</a></td>
+        <td class="time-cell">${formatTime(e.created_at)}</td>
+      </tr>
+    `).join('');
+    document.getElementById('load-more').style.display = events.length >= LIMIT ? 'block' : 'none';
+  }
+}
+
+function loadMore() { offset += LIMIT; load(); }
+
+function escHtml(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function formatTime(iso) {
+  return new Date(iso).toLocaleString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+}
+
+document.getElementById('logout-btn').addEventListener('click', async () => {
+  await fetch('/api/staff/logout', { method: 'POST', credentials: 'include' });
+  window.location.href = '/staff/login';
+});
+
+load(true);
+</script>
+</body>
+</html>
