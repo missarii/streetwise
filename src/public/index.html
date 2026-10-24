@@ -3,12 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Streetwise Colombo — City Maintenance Map</title>
-<meta name="description" content="Live city maintenance map for Colombo. Report potholes, flooding, street light outages and more. Watch the city get fixed in real time." />
+<title>Streetwise reference demo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400..600&display=swap" rel="stylesheet">
-<link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400..600&display=swap">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <style>
 :root {
   --font: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -29,6 +28,7 @@ button { font: inherit; color: inherit; }
 .app { height: 100%; display: grid; grid-template-columns: 380px minmax(0, 1fr); }
 @media (max-width: 860px) { body { overflow: auto; } .app { grid-template-columns: 1fr; grid-template-rows: 64vh auto; height: auto; } }
 
+/* panel: content only */
 .panel { background: var(--panel); border-right: 1px solid var(--line); display: grid; grid-template-rows: auto auto auto minmax(0, 1fr); min-height: 0; }
 @media (max-width: 860px) { .panel { order: 2; border-right: 0; } }
 .top { display: flex; align-items: center; justify-content: space-between; padding: 22px 28px 0; }
@@ -67,6 +67,7 @@ button { font: inherit; color: inherit; }
 @keyframes arrive { from { opacity: 0; transform: translateY(-6px); background: rgba(79,134,240,.10); } to { opacity: 1; transform: none; } }
 .empty { padding: 40px 12px; text-align: center; color: var(--muted); font-size: 13px; }
 
+/* map and its tools */
 .mapbox { position: relative; min-width: 0; min-height: 0; }
 @media (max-width: 860px) { .mapbox { order: 1; } }
 #map { position: absolute; inset: 0; background: var(--navy); }
@@ -95,6 +96,7 @@ button { font: inherit; color: inherit; }
 .counter span { display: block; margin-top: 8px; font-size: 12.5px; color: var(--muted); }
 @media (max-width: 860px) { .counter { left: 12px; right: auto; bottom: 28px; padding: 12px 16px; } .counter b { font-size: 28px; } }
 
+/* report card */
 .card { position: absolute; top: 72px; left: 16px; z-index: 3; width: 340px; max-width: calc(100% - 32px); max-height: calc(100% - 88px); overflow: auto; border-radius: 6px; box-shadow: 0 20px 40px -24px rgba(0,0,0,.8); animation: pop .45s var(--ease); }
 @keyframes pop { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .card-in { padding: 20px 22px 22px; display: grid; gap: 18px; }
@@ -185,21 +187,6 @@ button { font: inherit; color: inherit; }
 .tl b { display: block; font-size: 13px; font-weight: 500; color: var(--on); }
 .tl span { font-size: 12px; color: var(--muted); }
 .tl li.later b { color: var(--muted); }
-
-/* zone glow cover light + pulse (extra feature) */
-@keyframes zonePulse {
-  0% { box-shadow: 0 0 0 0 rgba(0,180,216,.6); }
-  70% { box-shadow: 0 0 0 14px rgba(0,180,216,0); }
-  100% { box-shadow: 0 0 0 0 rgba(0,180,216,0); }
-}
-@keyframes zonePulsePaused {
-  0% { box-shadow: 0 0 0 0 rgba(245,158,11,.6); }
-  70% { box-shadow: 0 0 0 14px rgba(245,158,11,0); }
-  100% { box-shadow: 0 0 0 0 rgba(245,158,11,0); }
-}
-.zone-pulse-active { animation: zonePulse 2.6s ease-in-out infinite; }
-.zone-pulse-paused { animation: zonePulsePaused 3.2s ease-in-out infinite; }
-
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
 </head>
@@ -215,7 +202,7 @@ button { font: inherit; color: inherit; }
       <div class="nums">
         <div><b id="n-open">0</b><span>Open reports</span></div>
         <div class="rv"><b id="n-review">0</b><span>Need review</span></div>
-        <div><b id="n-fixed30">0</b><span>Fixed in 30 days</span></div>
+        <div><b>214</b><span>Fixed in 30 days</span></div>
       </div>
     </div>
     <div class="tabs" role="tablist">
@@ -228,7 +215,7 @@ button { font: inherit; color: inherit; }
   <div class="mapbox">
     <div id="map" aria-label="Map of reports"></div>
     <div class="types glass" id="types" role="group" aria-label="Show report types"></div>
-    <div class="counter glass" aria-live="polite"><b id="resolved">0</b><span>issues fixed, and counting</span></div>
+    <div class="counter glass" aria-live="polite"><b id="resolved">3,086</b><span>issues fixed, and counting</span></div>
     <div id="card-slot"></div>
   </div>
 </div>
@@ -236,185 +223,186 @@ button { font: inherit; color: inherit; }
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script>
 (function () {
-  const COLOR = { 5: '#e5484d', 4: '#e07b39', 3: '#d4a53b', 2: '#4f86f0', 1: '#7b8494' };
-  const TYPE_COLOR = { Pothole: '#d08a52', 'Street light': '#e3b341', Flooding: '#4aa3df', Rubbish: '#6fb07f' };
-  const ICON = {
-    Pothole: '<path d="M2 10.5c0-1.7 2.7-3 6-3s6 1.3 6 3-2.7 3-6 3-6-1.3-6-3Z"/><path d="M6 9.5l1.5-1 1 1.4 1.6-.9"/><path d="M8 2.5v2.5"/>',
+  var COLOR = { 5: '#e5484d', 4: '#e07b39', 3: '#d4a53b', 2: '#4f86f0', 1: '#7b8494' };
+  var TYPES = ['Pothole', 'Street light', 'Flooding', 'Rubbish'];
+  var TYPE_COLOR = { 'Pothole': '#d08a52', 'Street light': '#e3b341', 'Flooding': '#4aa3df', 'Rubbish': '#6fb07f' };
+  var ICON = {
+    'Pothole': '<path d="M2 10.5c0-1.7 2.7-3 6-3s6 1.3 6 3-2.7 3-6 3-6-1.3-6-3Z"/><path d="M6 9.5l1.5-1 1 1.4 1.6-.9"/><path d="M8 2.5v2.5"/>',
     'Street light': '<path d="M5 14.5V5a3 3 0 0 1 3-3h3"/><path d="M9.5 4.5h3l-.6 1.8H10.1Z"/><path d="M3 14.5h4"/>',
-    Flooding: '<path d="M1.5 6.5c1.6-1.2 3-1.2 4.3 0s2.7 1.2 4.3 0 3-1.2 4.4 0"/><path d="M1.5 10.5c1.6-1.2 3-1.2 4.3 0s2.7 1.2 4.3 0 3-1.2 4.4 0"/>',
-    Rubbish: '<path d="M2.5 4.5h11"/><path d="M6 4.5V3h4v1.5"/><path d="M4 4.5l.8 9.5h6.4l.8-9.5"/><path d="M7 7v4.5M9 7v4.5"/>'
+    'Flooding': '<path d="M1.5 6.5c1.6-1.2 3-1.2 4.3 0s2.7 1.2 4.3 0 3-1.2 4.4 0"/><path d="M1.5 10.5c1.6-1.2 3-1.2 4.3 0s2.7 1.2 4.3 0 3-1.2 4.4 0"/>',
+    'Rubbish': '<path d="M2.5 4.5h11"/><path d="M6 4.5V3h4v1.5"/><path d="M4 4.5l.8 9.5h6.4l.8-9.5"/><path d="M7 7v4.5M9 7v4.5"/>'
   };
-  function icon(t, size) { return '<svg class="ic" width="' + (size || 14) + '" height="' + (size || 14) + '" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (ICON[t] || '') + '</svg>'; }
-  function sizeOf(p) { return p >= 4 ? 'Large' : p === 3 ? 'Medium' : 'Small'; }
-  const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function icon(t, size) { return '<svg class="ic" width="' + (size || 14) + '" height="' + (size || 14) + '" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICON[t] + '</svg>'; }
+  function sizeOf(r) { return r.p >= 4 ? 'Large' : r.p === 3 ? 'Medium' : 'Small'; }
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  /* ── State (wired to real API) ── */
-  let allReports = [], allZones = [];
-  let activeFilter = 'all', activeTab = 'all', selected = null, map = null, ready = false;
-  let resolved = 3086;
+  var ZONES = [
+    { id: 'Z-01', name: 'Fort and Pettah', box: [79.842, 6.929, 79.862, 6.944], status: 'Active' },
+    { id: 'Z-02', name: 'Kollupitiya', box: [79.849, 6.901, 79.862, 6.926], status: 'Active' },
+    { id: 'Z-03', name: 'Borella', box: [79.868, 6.906, 79.889, 6.925], status: 'Paused', reason: 'Crew on a flood call since 26 Oct' },
+    { id: 'Z-04', name: 'Wellawatte', box: [79.856, 6.868, 79.871, 6.898], status: 'Active' },
+    { id: 'Z-05', name: 'Narahenpita', box: [79.873, 6.884, 79.894, 6.903], status: 'Active' },
+    { id: 'Z-06', name: 'Rajagiriya', box: [79.893, 6.904, 79.914, 6.924], status: 'Active' }
+  ];
+  var POOL = {
+    'Pothole': [['Deep pothole by the bus stop, a scooter nearly fell', 4, .82, 'Road damage at a bus stop, near accident reported'],
+                ['Pothole opening up outside the post office', 3, .91, 'Road damage on a busy street, no injury reported'],
+                ['Road has caved in near the canal bridge, a car wheel went in', 5, .9, 'Collapsed surface on a main route, vehicle damaged'],
+                ['Small crack getting bigger near the school gate', 2, .79, 'Minor damage, but next to a school'],
+                ['Uneven patch after the pipe works, bikes swerving', 3, .74, 'Poor repair after works, cyclists at risk']],
+    'Street light': [['Whole row of lights out on the side road', 3, .9, 'Several lights out on a residential road'],
+                     ['Lamp at the steps has been off for 3 nights', 2, .94, 'Single light out, low traffic area'],
+                     ['Light flickering at the library corner', 1, .95, 'Flickering, still working'],
+                     ['Not sure, but the path lights seem dim lately', 2, .62, 'Unclear fault, the reporter is unsure'],
+                     ['Pole leaning over the road after the storm, wires low', 5, .86, 'Fallen pole with low wires over traffic']],
+    'Flooding': [['Water up to the knees at the junction, cars stuck', 5, .88, 'Road blocked by deep water, vehicles stranded'],
+                 ['Drain blocked, water rising in the lane after rain', 4, .63, 'Blocked drain, water level unclear from the text'],
+                 ['Puddle across half the road every time it rains', 2, .77, 'Recurring surface water, passable'],
+                 ['Canal close to overflowing behind the houses', 4, .71, 'Risk to homes if rain continues']],
+    'Rubbish': [['Market bins overflowing into the drain', 3, .87, 'Large pile next to a drain, flood risk if it rains'],
+                ['Bags dumped behind the bus shelter', 2, .86, 'Dumped household waste, no hazard'],
+                ['Someone left a chair on the pavement', 1, .58, 'Small item, may not be public waste'],
+                ['Broken glass spread across the footpath', 3, .84, 'Sharp debris on a walking route']]
+  };
 
-  const API_BASE = '';
-  async function getJSON(path) {
-    const r = await fetch(API_BASE + path, { credentials: 'same-origin' });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    return r.json();
+  var seed = 7; function rnd() { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }
+  function pick(a) { return a[Math.floor(rnd() * a.length)]; }
+  var ROWS = []; TYPES.forEach(function (t) { POOL[t].forEach(function (row) { ROWS.push({ t: t, row: row }); }); });
+  for (var q = ROWS.length - 1; q > 0; q--) { var j = Math.floor(rnd() * (q + 1)), tmp = ROWS[q]; ROWS[q] = ROWS[j]; ROWS[j] = tmp; }
+  var rowAt = 0, reports = [], nextId = 400;
+  function make(minsAgo, forced) {
+    var nx = ROWS[rowAt++ % ROWS.length];
+    var t = forced ? forced.t : nx.t, row = forced ? forced.row : nx.row, z = forced ? forced.z : pick(ZONES);
+    return { id: 'r-0' + (nextId++), t: t, text: row[0], p: row[1], c: row[2], why: row[3], z: z,
+      lng: z.box[0] + rnd() * (z.box[2] - z.box[0]), lat: z.box[1] + rnd() * (z.box[3] - z.box[1]), ago: minsAgo };
   }
-
-  function agoFromISO(iso) {
-    if (!iso) return 'just now';
-    const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
-    if (m < 1) return 'just now';
-    if (m < 60) return m + ' min ago';
-    return Math.floor(m / 60) + ' h ago';
-  }
-
-  function mapReport(r) {
-    const status = r.status || 'published';
-    return {
-      id: r.id,
-      t: r.type,
-      text: r.text,
-      p: Number(r.priority) || 1,
-      c: 0.78 + (Number(r.priority) || 1) * 0.04,
-      why: r.reason || 'Triaged by the rules',
-      z: { name: r.zone || 'Unassigned', status: status },
-      lng: Number(r.lng), lat: Number(r.lat),
-      ago: agoFromISO(r.created_at),
-      approved: status === 'published',
-      thinking: false
-    };
-  }
+  for (var i = 0; i < 46; i++) reports.push(make(Math.floor(5 + rnd() * 900)));
+  reports.push(make(3, { t: 'Flooding', row: POOL['Flooding'][0], z: ZONES[2] }));
+  reports.sort(function (a, b) { return a.ago - b.ago; });
 
   function needsReview(r) { return !r.approved && (r.p >= 4 || r.c < 0.7); }
-  function visible() { return allReports.filter(r => activeFilter === 'all' || r.t === activeFilter); }
-  function reviewList() { return visible().filter(r => !r.thinking && needsReview(r)); }
-
-  /* ── Toast ── */
-  function showToast(msg) {
-    try {
-      const ac = new (window.AudioContext || window.webkitAudioContext)();
-      const o = ac.createOscillator(), g = ac.createGain();
-      o.type = 'sine'; o.frequency.setValueAtTime(880, ac.currentTime);
-      g.gain.setValueAtTime(0.06, ac.currentTime);
-      o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + 0.12);
-    } catch (e) {}
-  }
-
-  /* ── List ── */
-  const listEl = document.getElementById('list');
-  function animateNum(el, target) {
-    const from = parseInt(el.textContent) || 0; const diff = target - from;
-    if (!diff) { el.textContent = target; return; }
-    let step = 0; const steps = 18;
-    const t = setInterval(() => {
-      step++; el.textContent = Math.round(from + diff * step / steps);
-      if (step >= steps) { el.textContent = target; clearInterval(t); }
-    }, 14);
-  }
-  function renderList(newId) {
-    const all = visible(), rev = reviewList();
-    const seen = {}, rows = (activeTab === 'review' ? rev : all).filter(r => { if (seen[r.text]) return false; seen[r.text] = 1; return true; }).slice(0, 30);
-    document.getElementById('n-open').textContent = all.length;
-    document.getElementById('n-review').textContent = rev.length;
-    document.getElementById('c-all').textContent = all.length;
-    document.getElementById('c-review').textContent = rev.length;
-    document.querySelectorAll('.type').forEach(b => {
-      b.querySelector('.tn').textContent = allReports.filter(x => x.t === b.dataset.type).length;
-    });
-    listEl.innerHTML = '';
-    if (!rows.length) {
-      listEl.innerHTML = '<li class="empty">Nothing to review. Every report passed the rules.</li>';
-    } else {
-      rows.forEach(r => {
-        const li = document.createElement('li');
-        li.className = 'row' + (selected === r ? ' sel' : '') + (r.id === newId ? ' new' : '');
-        li.tabIndex = 0;
-        const tag = r.thinking ? '<span class="tag wait">Triaging</span>' : (needsReview(r) ? '<span class="tag">Review</span>' : '<span class="tag ok">Live</span>');
-        const pc = COLOR[r.p], tc = TYPE_COLOR[r.t];
-        li.style.setProperty('--pc', pc); li.style.setProperty('--tc', tc);
-        li.innerHTML =
-          '<span class="pb" title="Priority ' + r.p + ' of 5">P' + r.p + '</span>' +
-          '<div class="tx"><span class="t1">' + escHtml(r.text) + '</span>' +
-          '<span class="t2"><span class="rid">' + escHtml(r.id) + '</span><span class="tt">' + icon(r.t, 12) + escHtml(r.t) + '</span><span>' + escHtml(r.z.name) + '</span></span></div>' +
-          '<div class="rt">' + tag + '<span class="ago">' + escHtml(r.ago) + '</span></div>';
-        li.addEventListener('click', () => { if (!r.thinking) select(r, true); });
-        li.addEventListener('keydown', e => { if (e.key === 'Enter' && !r.thinking) select(r, true); });
-        listEl.appendChild(li);
-      });
-    }
-  }
-
-  function escHtml(x) { return String(x || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
-
-  /* ── Report card ── */
-  const slot = document.getElementById('card-slot');
-  function renderCard() {
-    if (!selected) { slot.innerHTML = ''; return; }
-    const r = selected, d = decision(r), pc = COLOR[r.p], review = needsReview(r);
-    const zone = r.z.name + (r.z.status === 'Active' ? '' : ', paused');
-    const conf = Math.round(r.c * 100);
-    let segs = ''; for (let k = 1; k <= 5; k++) segs += '<i class="' + (k <= r.p ? 'on' : '') + '"></i>';
-    const steps = [
-      ['Received', 'Citizen report, ' + escHtml(r.ago), 'done'],
-      ['Triaged by the AI', r.t + ', priority ' + r.p + ', ' + conf + '% sure', 'done'],
-      review ? ['Waiting for staff', d.text, 'now'] : [r.approved ? 'Approved by staff' : 'Published by the rules', 'On the public map', 'done'],
-      ['Fixed', 'Crew zone closes it', review ? 'later' : 'now']
-    ];
-    const tl = steps.map(st => '<li class="' + st[2] + '"><em>' + (steps.indexOf(st) + 1) + '</em><div><b>' + escHtml(st[0]) + '</b><span>' + escHtml(st[1]) + '</span></div></li>').join('');
-    slot.innerHTML =
-      '<div class="card glass" role="dialog" aria-label="Report ' + escHtml(r.id) + '" style="--pc:' + pc + ';--tc:' + TYPE_COLOR[r.t] + '"><div class="card-in">' +
-        '<div class="c-head"><div class="c-idrow"><span class="c-id">' + escHtml(r.id) + '</span><span class="c-st ' + (review ? 'rv' : 'ok') + '">' + (review ? 'Needs review' : 'Published') + '</span></div>' +
-        '<button class="x" id="cx" aria-label="Close">&#x2715;</button></div>' +
-        '<div><span class="c-kind">' + icon(r.t, 15) + escHtml(r.t) + '<span>' + escHtml(zone) + '</span></span>' +
-        '<p class="c-quote">' + escHtml(r.text) + '</p><p class="c-meta">Reported ' + escHtml(r.ago) + ' by a citizen</p></div>' +
-        '<div class="c-meter"><div class="c-mh"><span>Priority</span><b>' + r.p + ' of 5</b></div><div class="segs">' + segs + '</div></div>' +
-        '<div class="c-meter"><div class="c-mh"><span>AI confidence</span><b>' + conf + '%</b></div><div class="cbar"><i style="width:' + conf + '%"></i><u title="The 70% rule"></u></div><div class="c-hint">Under 70% always goes to a person</div></div>' +
-        '<div class="c-facts">' +
-          '<div><b>' + escHtml(r.z.name) + '</b><span>Crew zone</span></div>' +
-          '<div><b>' + sizeOf(r.p) + '</b><span>Size</span></div>' +
-          '<div><b>Model</b><span>Triaged by</span></div>' +
-        '</div>' +
-        '<div class="c-why"><span>Why the AI decided this</span>' + escHtml(r.why) + '</div>' +
-        '<div class="decision ' + d.cls + '"><b>' + escHtml(d.title) + '</b><span>' + escHtml(d.text) + '</span></div>' +
-        '<ol class="tl">' + tl + '</ol>' +
-        (review ? '<div class="acts"><button class="btn primary" id="ap">Approve and publish</button><button class="btn" id="rj">Reject</button></div>' : '') +
-      '</div></div>';
-    document.getElementById('cx').onclick = () => select(null);
-    const ap = document.getElementById('ap'), rj = document.getElementById('rj');
-    if (ap) ap.onclick = () => { r.approved = true; refresh(); renderCard(); showToast('Report approved & published'); };
-    if (rj) rj.onclick = () => { allReports = allReports.filter(x => x !== r); select(null); refresh(); showToast('Report rejected'); };
-  }
+  function ago(m) { return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : Math.floor(m / 60) + ' h ago'; }
   function decision(r) {
     if (r.approved) return { cls: 'pub', title: 'Approved and published', text: 'A staff member checked it. It is on the public map.' };
     if (r.p >= 4) return { cls: 'review', title: 'Sent to a person', text: 'Priority ' + r.p + ' is 4 or more. Urgent reports always need a staff decision.' };
     if (r.c < 0.7) return { cls: 'review', title: 'Sent to a person', text: 'The AI is only ' + Math.round(r.c * 100) + '% sure, under the 70% rule.' };
     return { cls: 'pub', title: 'Published automatically', text: 'Priority under 4 and the AI is ' + Math.round(r.c * 100) + '% sure, so the rules let it through.' };
   }
-  document.addEventListener('keydown', e => { if (e.key === 'Escape' && selected) select(null); });
+
+  var active = {}; TYPES.forEach(function (t) { active[t] = true; });
+  var tab = 'all', selected = null, map = null, ready = false;
+  function visible() { return reports.filter(function (r) { return active[r.t]; }); }
+
+  /* type pills on the map */
+  var tEl = document.getElementById('types');
+  TYPES.forEach(function (t) {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'type'; b.setAttribute('aria-pressed', 'true');
+    b.style.setProperty('--tc', TYPE_COLOR[t]); b.dataset.type = t;
+    b.innerHTML = icon(t) + '<span>' + t + '</span><span class="tn"></span>';
+    b.addEventListener('click', function () { active[t] = !active[t]; b.setAttribute('aria-pressed', String(active[t])); refresh(); });
+    tEl.appendChild(b);
+  });
+
+  /* tabs */
+  Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (b) {
+    b.addEventListener('click', function () {
+      tab = b.dataset.tab;
+      Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (x) { x.setAttribute('aria-selected', String(x === b)); });
+      renderList();
+    });
+  });
+
+  /* list */
+  var listEl = document.getElementById('list');
+  function renderList(newId) {
+    var all = visible(), rev = all.filter(function (r) { return !r.thinking && needsReview(r); });
+    var seen = {}, rows = (tab === 'review' ? rev : all).filter(function (r) { if (seen[r.text]) return false; seen[r.text] = 1; return true; }).slice(0, 30);
+    document.getElementById('n-open').textContent = all.length;
+    document.getElementById('n-review').textContent = rev.length;
+    document.getElementById('c-all').textContent = all.length;
+    document.getElementById('c-review').textContent = rev.length;
+    Array.prototype.forEach.call(document.querySelectorAll('.type'), function (b) {
+      b.querySelector('.tn').textContent = reports.filter(function (r) { return r.t === b.dataset.type; }).length;
+    });
+    listEl.innerHTML = rows.length ? '' : '<li class="empty">Nothing to review. Every report passed the rules.</li>';
+    rows.forEach(function (r) {
+      var li = document.createElement('li'); li.className = 'row' + (selected === r ? ' sel' : '') + (r.id === newId ? ' new' : ''); li.tabIndex = 0;
+      var tag = r.thinking ? '<span class="tag wait">Triaging</span>' : (needsReview(r) ? '<span class="tag">Review</span>' : '<span class="tag ok">Live</span>');
+      var right = '<div class="rt">' + tag + '<span class="ago">' + ago(r.ago) + '</span></div>';
+      li.style.setProperty('--pc', COLOR[r.p]); li.style.setProperty('--tc', TYPE_COLOR[r.t]);
+      li.innerHTML = '<span class="pb" title="Priority ' + r.p + ' of 5">P' + r.p + '</span>' +
+        '<div class="tx"><span class="t1">' + r.text + '</span><span class="t2"><span class="rid">' + r.id + '</span><span class="tt">' + icon(r.t, 12) + r.t + '</span><span>' + r.z.name + '</span></span></div>' + right;
+      li.addEventListener('click', function () { if (!r.thinking) select(r, true); });
+      li.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !r.thinking) select(r, true); });
+      listEl.appendChild(li);
+    });
+  }
+
+  /* card */
+  var slot = document.getElementById('card-slot');
+  function renderCard() {
+    if (!selected) { slot.innerHTML = ''; return; }
+    var r = selected, d = decision(r), pc = COLOR[r.p], review = needsReview(r);
+    var zone = r.z.name + (r.z.status === 'Active' ? '' : ', paused');
+    var conf = Math.round(r.c * 100);
+    var segs = ''; for (var k = 1; k <= 5; k++) segs += '<i class="' + (k <= r.p ? 'on' : '') + '"></i>';
+    var steps = [
+      ['Received', 'Citizen report, ' + ago(r.ago), 'done'],
+      ['Triaged by the AI', r.t + ', priority ' + r.p + ', ' + conf + '% sure', 'done'],
+      review ? ['Waiting for staff', d.text, 'now'] : [r.approved ? 'Approved by staff' : 'Published by the rules', 'On the public map', 'done'],
+      ['Fixed', 'Crew zone ' + r.z.id + ' closes it', review ? 'later' : 'now']
+    ];
+    var tl = steps.map(function (st, i) { return '<li class="' + st[2] + '"><em>' + (i + 1) + '</em><div><b>' + st[0] + '</b><span>' + st[1] + '</span></div></li>'; }).join('');
+    slot.innerHTML =
+      '<div class="card glass" role="dialog" aria-label="Report ' + r.id + '" style="--pc:' + pc + ';--tc:' + TYPE_COLOR[r.t] + '"><div class="card-in">' +
+        '<div class="c-head"><div class="c-idrow"><span class="c-id">' + r.id + '</span><span class="c-st ' + (review ? 'rv' : 'ok') + '">' + (review ? 'Needs review' : 'Published') + '</span></div>' +
+        '<button class="x" id="cx" aria-label="Close">&#x2715;</button></div>' +
+        '<div><span class="c-kind">' + icon(r.t, 15) + r.t + '<span>' + zone + '</span></span>' +
+        '<p class="c-quote">' + r.text + '</p><p class="c-meta">Reported ' + ago(r.ago) + ' by a citizen</p></div>' +
+        '<div class="c-meter"><div class="c-mh"><span>Priority</span><b>' + r.p + ' of 5</b></div><div class="segs">' + segs + '</div></div>' +
+        '<div class="c-meter"><div class="c-mh"><span>AI confidence</span><b>' + conf + '%</b></div><div class="cbar"><i style="width:' + conf + '%"></i><u title="The 70% rule"></u></div><div class="c-hint">Under 70% always goes to a person</div></div>' +
+        '<div class="c-facts">' +
+          '<div><b>' + r.z.id + '</b><span>Crew zone</span></div>' +
+          '<div><b>' + sizeOf(r) + '</b><span>Size</span></div>' +
+          '<div><b>Model</b><span>Triaged by</span></div>' +
+        '</div>' +
+        '<div class="c-why"><span>Why the AI decided this</span>' + r.why + '</div>' +
+        '<div class="decision ' + d.cls + '"><b>' + d.title + '</b><span>' + d.text + '</span></div>' +
+        '<ol class="tl">' + tl + '</ol>' +
+        (review ? '<div class="acts"><button class="btn primary" id="ap">Approve and publish</button><button class="btn" id="rj">Reject</button></div>' : '') +
+      '</div></div>';
+    document.getElementById('cx').onclick = function () { select(null); };
+    var ap = document.getElementById('ap'), rj = document.getElementById('rj');
+    if (ap) ap.onclick = function () { r.approved = true; refresh(); renderCard(); };
+    if (rj) rj.onclick = function () { reports = reports.filter(function (x) { return x !== r; }); select(null); refresh(); };
+  }
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && selected) select(null); });
   function select(r, fly) {
     selected = r; renderList(); renderCard();
     if (r && fly && map) map.flyTo({ center: [r.lng, r.lat], zoom: Math.max(map.getZoom(), 15), speed: 1.2, curve: 1.4, essential: true, offset: window.innerWidth > 860 ? [170, 0] : [0, 0] });
     if (map && ready) map.getSource('sel').setData(fc(r ? [r] : []));
   }
+
   function fc(list) {
-    return { type: 'FeatureCollection', features: list.map(r => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [r.lng, r.lat] }, properties: { id: r.id, p: r.p, color: COLOR[r.p], urgent: r.p === 5 ? 1 : 0 } })) };
+    return { type: 'FeatureCollection', features: list.map(function (r) {
+      return { type: 'Feature', geometry: { type: 'Point', coordinates: [r.lng, r.lat] }, properties: { id: r.id, p: r.p, color: COLOR[r.p], urgent: r.p === 5 ? 1 : 0 } };
+    }) };
   }
   function zonesFc() {
-    return { type: 'FeatureCollection', features: allZones.map(z => {
-      const pts = (z.polygon || []).map(p => [p[0], p[1]]);
-      if (pts.length && pts[0][0] !== pts[pts.length - 1][0]) pts.push(pts[0]);
-      return { type: 'Feature', properties: { name: z.name, paused: z.status !== 'Active' ? 1 : 0 }, geometry: { type: 'Polygon', coordinates: [pts] } };
+    return { type: 'FeatureCollection', features: ZONES.map(function (z) {
+      var b = z.box; return { type: 'Feature', properties: { name: z.name, paused: z.status !== 'Active' ? 1 : 0 },
+        geometry: { type: 'Polygon', coordinates: [[[b[0], b[1]], [b[2], b[1]], [b[2], b[3]], [b[0], b[3]], [b[0], b[1]]]] } };
     }) };
   }
   function refresh(newId) {
     renderList(newId);
-    if (map && ready) map.getSource('reports').setData(fc(visible().filter(r => !r.thinking)));
+    if (map && ready) map.getSource('reports').setData(fc(visible().filter(function (r) { return !r.thinking; })));
   }
 
-  /* ── Map ── */
+  /* recolour the free dark style into Dynarq navy */
   function tint(style) {
-    style.layers.forEach(l => {
-      const id = l.id, p = l.paint = l.paint || {};
+    style.layers.forEach(function (l) {
+      var id = l.id, p = l.paint = l.paint || {};
       if (id === 'background') p['background-color'] = '#111418';
       else if (id === 'water') p['fill-color'] = '#0b0d10';
       else if (/^landuse|^landcover/.test(id)) p['fill-color'] = '#14171c';
@@ -429,28 +417,20 @@ button { font: inherit; color: inherit; }
     });
     return style;
   }
+
   function start(style) {
     map = new maplibregl.Map({ container: 'map', style: tint(style), center: [79.874, 6.905], zoom: 12.6, pitch: 0, attributionControl: { compact: true }, fadeDuration: 200 });
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
     map.on('load', function () {
-      /* zones: fill + glow cover light + outline + labels */
       map.addSource('zones', { type: 'geojson', data: zonesFc() });
-      map.addLayer({ id: 'zone-fill', type: 'fill', source: 'zones', paint: { 'fill-color': ['case', ['==', ['get', 'paused'], 1], 'rgba(245,158,11,.14)', 'rgba(0,180,216,.10)'], 'fill-opacity': 1 } });
-      map.addLayer({ id: 'zone-glow', type: 'line', source: 'zones', paint: { 'line-color': '#4fc3e8', 'line-width': 9, 'line-blur': 9, 'line-opacity': 0 } });
-      map.addLayer({ id: 'zone-line', type: 'line', source: 'zones', filter: ['==', ['get', 'paused'], 0], paint: { 'line-color': '#4fc3e8', 'line-width': 1.6, 'line-opacity': 0.85 } });
-      map.addLayer({ id: 'zone-line-paused', type: 'line', source: 'zones', filter: ['==', ['get', 'paused'], 1], paint: { 'line-color': '#f59e0b', 'line-width': 1.8, 'line-opacity': 0.9, 'line-dasharray': [4, 3] } });
-      map.addLayer({ id: 'zone-name', type: 'symbol', source: 'zones', layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': 12, 'text-letter-spacing': 0.05, 'text-transform': 'uppercase', 'text-anchor': 'top-left', 'text-offset': [0.6, 0.6], 'symbol-placement': 'point' }, paint: { 'text-color': '#c9ced6', 'text-opacity': 0.8, 'text-halo-color': '#111418', 'text-halo-width': 1.4 } });
-      map.on('click', 'zone-fill', e => {
-        const p = e.features[0].properties;
-        new maplibregl.Popup({ closeButton: true, maxWidth: '260px' })
-          .setLngLat(e.lngLat)
-          .setHTML('<div style="font-family:var(--font)"><strong>' + escHtml(p.name) + '</strong><div style="margin-top:6px;font-size:12px;color:' + (p.paused ? '#f59e0b' : '#6ee7b7') + '">' + (p.paused ? '⏸ Paused zone' : '✓ Active zone') + '</div></div>')
-          .addTo(map);
-      });
+      map.addLayer({ id: 'zone-fill', type: 'fill', source: 'zones', paint: { 'fill-color': '#2466e8', 'fill-opacity': ['case', ['==', ['get', 'paused'], 1], 0.16, 0.08] } });
+      map.addLayer({ id: 'zone-glow', type: 'line', source: 'zones', paint: { 'line-color': '#4f86f0', 'line-width': 8, 'line-blur': 8, 'line-opacity': 0 } });
+      map.addLayer({ id: 'zone-line', type: 'line', source: 'zones', filter: ['==', ['get', 'paused'], 0], paint: { 'line-color': '#4f86f0', 'line-width': 1.3, 'line-opacity': 0.75 } });
+      map.addLayer({ id: 'zone-line-paused', type: 'line', source: 'zones', filter: ['==', ['get', 'paused'], 1], paint: { 'line-color': '#d4a53b', 'line-width': 1.5, 'line-opacity': 0.85, 'line-dasharray': [3, 2] } });
+      map.addLayer({ id: 'zone-name', type: 'symbol', source: 'zones', layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': 12, 'text-letter-spacing': 0.05, 'text-transform': 'uppercase', 'text-anchor': 'top-left', 'text-offset': [0.6, 0.6], 'symbol-placement': 'point' }, paint: { 'text-color': '#c9ced6', 'text-opacity': 0.75, 'text-halo-color': '#111418', 'text-halo-width': 1.4 } });
 
-      /* reports */
       map.addSource('reports', { type: 'geojson', data: fc(visible()), cluster: true, clusterRadius: 46, clusterMaxZoom: 14 });
-      map.addLayer({ id: 'cl-halo', type: 'circle', source: 'reports', filter: ['has', 'point_count'], paint: { 'circle-color': '#4fc3e8', 'circle-opacity': 0.14, 'circle-radius': ['step', ['get', 'point_count'], 26, 8, 32, 16, 38] } });
+      map.addLayer({ id: 'cl-halo', type: 'circle', source: 'reports', filter: ['has', 'point_count'], paint: { 'circle-color': '#4f86f0', 'circle-opacity': 0.14, 'circle-radius': ['step', ['get', 'point_count'], 26, 8, 32, 16, 38] } });
       map.addLayer({ id: 'cl', type: 'circle', source: 'reports', filter: ['has', 'point_count'], paint: { 'circle-color': '#2466e8', 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 1.5, 'circle-radius': ['step', ['get', 'point_count'], 16, 8, 20, 16, 24] } });
       map.addLayer({ id: 'cl-n', type: 'symbol', source: 'reports', filter: ['has', 'point_count'], layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-font': ['Noto Sans Regular'], 'text-size': 13 }, paint: { 'text-color': '#ffffff' } });
       map.addLayer({ id: 'pulse', type: 'circle', source: 'reports', filter: ['all', ['!', ['has', 'point_count']], ['==', ['get', 'urgent'], 1]], paint: { 'circle-color': 'rgba(0,0,0,0)', 'circle-stroke-color': '#e5484d', 'circle-stroke-width': 2, 'circle-radius': 10, 'circle-stroke-opacity': 0.6 } });
@@ -464,96 +444,56 @@ button { font: inherit; color: inherit; }
       map.resize();
       map.fitBounds([[79.842, 6.868], [79.914, 6.944]], { padding: window.innerWidth > 860 ? { top: 90, bottom: 60, left: 60, right: 80 } : { top: 70, bottom: 20, left: 20, right: 20 }, duration: 0 });
 
-      /* zone glow pulse animation */
-      if (!reduce) {
-        let dir = 1, w = 9;
-        (function zoneFrame() {
-          w += 0.15 * dir;
-          if (w > 14) dir = -1;
-          if (w < 6) dir = 1;
-          try { map.setPaintProperty('zone-glow', 'line-width', w); map.setPaintProperty('zone-glow', 'line-opacity', 0.18 + Math.sin(Date.now() / 900) * 0.12); } catch (e) {}
-          requestAnimationFrame(zoneFrame);
-        })();
-      }
-
-      map.on('click', 'cl', e => {
-        const f = map.queryRenderedFeatures(e.point, { layers: ['cl'] })[0];
-        map.getSource('reports').getClusterExpansionZoom(f.properties.cluster_id).then(z => map.easeTo({ center: f.geometry.coordinates, zoom: z + 0.3, duration: 700 }));
+      map.on('click', 'cl', function (e) {
+        var f = map.queryRenderedFeatures(e.point, { layers: ['cl'] })[0];
+        map.getSource('reports').getClusterExpansionZoom(f.properties.cluster_id).then(function (z) { map.easeTo({ center: f.geometry.coordinates, zoom: z + 0.3, duration: 700 }); });
       });
-      map.on('click', 'pt', e => { const id = e.features[0].properties.id; select(allReports.find(r => r.id === id), true); });
-      ['cl', 'pt'].forEach(l => { map.on('mouseenter', l, () => { map.getCanvas().style.cursor = 'pointer'; }); map.on('mouseleave', l, () => { map.getCanvas().style.cursor = ''; }); });
+      map.on('click', 'pt', function (e) { var id = e.features[0].properties.id; select(reports.filter(function (r) { return r.id === id; })[0], true); });
+      ['cl', 'pt'].forEach(function (l) { map.on('mouseenter', l, function () { map.getCanvas().style.cursor = 'pointer'; }); map.on('mouseleave', l, function () { map.getCanvas().style.cursor = ''; }); });
 
       if (!reduce) {
-        const t0 = performance.now();
+        var t0 = performance.now();
         (function frame(now) {
-          const k = ((now - t0) % 1800) / 1800;
-          try { map.setPaintProperty('pulse', 'circle-radius', 8 + k * 18); map.setPaintProperty('pulse', 'circle-stroke-opacity', 0.7 * (1 - k)); } catch (e) {}
+          var k = ((now - t0) % 1800) / 1800;
+          map.setPaintProperty('pulse', 'circle-radius', 8 + k * 18);
+          map.setPaintProperty('pulse', 'circle-stroke-opacity', 0.7 * (1 - k));
           requestAnimationFrame(frame);
         })(t0);
       }
     });
   }
 
-  /* ── Data load (real API) ── */
-  async function loadAll() {
-    try {
-      const [zRes, rRes, sRes] = await Promise.all([getJSON('/api/zones'), getJSON('/api/reports'), getJSON('/api/stats')]);
-      allZones = (zRes.zones || []).map(z => {
-        const poly = typeof z.polygon === 'string' ? JSON.parse(z.polygon) : (z.polygon || []);
-        let box = [79.874, 6.905, 79.874, 6.905];
-        if (poly.length) {
-          const xs = poly.map(p => p[0]), ys = poly.map(p => p[1]);
-          box = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
-        }
-        return { id: z.id, name: z.name, polygon: poly, box: box, status: z.status, crew: z.crew, pause_reason: z.pause_reason, paused_until: z.paused_until };
-      });
-      allReports = (rRes.reports || []).map(mapReport);
-      const totals = (sRes && sRes.totals) || {};
-      animateNum(document.getElementById('n-open'), totals.open || 0);
-      animateNum(document.getElementById('n-review'), totals.needs_review || totals.review || 0);
-      animateNum(document.getElementById('n-fixed30'), totals.fixed_30d || totals.fixed || 0);
-      animateNum(document.getElementById('resolved'), totals.fixed_total || resolved);
-      renderList();
-    } catch (e) {
-      console.error('Load error:', e);
-      listEl.innerHTML = '<li class="empty">Could not load data. Check connection and reload.</li>';
+
+  /* a new report arrives and is triaged */
+  function arrive() {
+    var r = make(0); r.thinking = true; reports.unshift(r); refresh(r.id);
+    if (map && ready) {
+      map.getSource('ripple').setData(fc([r]));
+      if (!reduce) {
+        var t0 = performance.now();
+        (function rip(now) { var k = Math.min(1, (now - t0) / 1400); map.setPaintProperty('ripple', 'circle-radius', 8 + k * 40); map.setPaintProperty('ripple', 'circle-stroke-opacity', 0.9 * (1 - k)); if (k < 1) requestAnimationFrame(rip); })(t0);
+      }
     }
+    setTimeout(function () { r.thinking = false; refresh(); }, 1600);
   }
+  setInterval(function () { reports.forEach(function (r) { r.ago += 1; }); renderList(); }, 60000);
+  setInterval(arrive, 10000);
 
-  /* ── Controls ── */
-  document.querySelectorAll('.type').forEach(btn => {
-    btn.addEventListener('click', () => {
-      activeFilter = btn.dataset.type;
-      document.querySelectorAll('.type').forEach(b => b.setAttribute('aria-pressed', String(b === btn)));
-      refresh();
-    });
-  });
-  Array.prototype.forEach.call(document.querySelectorAll('.tab'), b => {
-    b.addEventListener('click', () => {
-      activeTab = b.dataset.tab;
-      Array.prototype.forEach.call(document.querySelectorAll('.tab'), x => x.setAttribute('aria-selected', String(x === b)));
-      refresh();
-    });
-  });
-
-  /* ── Live counter ticker ── */
-  const rEl = document.getElementById('resolved');
-  setInterval(() => {
+  var resolved = 3086, rEl = document.getElementById('resolved');
+  setInterval(function () {
     resolved += 1; rEl.textContent = resolved.toLocaleString('en-US');
     rEl.classList.remove('bump'); void rEl.offsetWidth; rEl.classList.add('bump');
   }, 7000);
 
-  /* ── Bootstrap ── */
   renderList();
-  if (!window.maplibregl) { document.getElementById('map').innerHTML = '<div style="padding:24px;color:var(--muted);font-family:var(--font)">The map library did not load. Check the internet connection and reload.</div>'; return; }
+  if (!window.maplibregl) { document.getElementById('map').innerHTML = '<div class="err">The map library did not load. Check the internet connection and reload.</div>'; return; }
   fetch('https://tiles.openfreemap.org/styles/dark', { signal: AbortSignal.timeout ? AbortSignal.timeout(15000) : undefined })
-    .then(res => { if (!res.ok) throw new Error(res.status); return res.json(); })
+    .then(function (res) { if (!res.ok) throw new Error(res.status); return res.json(); })
     .then(start)
-    .catch(() => { document.getElementById('map').innerHTML = '<div style="padding:24px;color:var(--muted);font-family:var(--font)">The map tiles did not load. Check the internet connection and reload.</div>'; });
-
-  loadAll();
-  setInterval(() => { loadAll(); }, 30000);
+    .catch(function () { document.getElementById('map').innerHTML = '<div class="err">The map tiles did not load. Check the internet connection and reload.</div>'; });
 })();
 </script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" data-cf-beacon='{"version":"2024.11.0","token":"cc5048bacf0640089461e687f8a86c57","r":1,"spa":2}' crossorigin="anonymous"></script>
 </body>
 </html>
+

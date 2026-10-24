@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Streetwise reference demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400..600&display=swap">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<style>
+:root {
+  --font: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Geist Mono", ui-monospace, "SFMono-Regular", "Cascadia Mono", Menlo, Consolas, monospace;
+  --navy: #111418; --panel: #15181d; --glass: #1a1e24; --line: rgba(255,255,255,.07); --line-2: rgba(255,255,255,.12);
+  --on: #f2f4f7; --body: #b9bfc8; --muted: #8a919c; --faint: #636a75;
+  --blue: #2466e8; --bright: #4f86f0; --glow: #a9c2ee;
+  --p5: #e5484d; --p4: #e07b39; --p3: #d4a53b; --p2: #4f86f0; --p1: #7b8494;
+  --review: #d4a53b; --ok: #46a979;
+  --ease: cubic-bezier(.16,1,.3,1);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--navy); color: var(--body); font-family: var(--font); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; overflow: hidden; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--bright); outline-offset: 2px; }
+.app { height: 100%; display: grid; grid-template-columns: 380px minmax(0, 1fr); }
+@media (max-width: 860px) { body { overflow: auto; } .app { grid-template-columns: 1fr; grid-template-rows: 64vh auto; height: auto; } }
+
+/* panel: content only */
+.panel { background: var(--panel); border-right: 1px solid var(--line); display: grid; grid-template-rows: auto auto auto minmax(0, 1fr); min-height: 0; }
+@media (max-width: 860px) { .panel { order: 2; border-right: 0; } }
+.top { display: flex; align-items: center; justify-content: space-between; padding: 22px 28px 0; }
+.logo { display: flex; align-items: center; gap: 10px; color: var(--on); font-weight: 600; font-size: 16px; letter-spacing: -.02em; }
+.logo i { width: 18px; height: 18px; border-radius: 3px; background: var(--blue); position: relative; }
+.logo i::after { content: ""; position: absolute; inset: 6px; background: #fff; border-radius: 1px; }
+.where { font-family: var(--mono); font-size: 11.5px; letter-spacing: .04em; color: var(--muted); }
+.hero { padding: 40px 28px 28px; display: grid; gap: 28px; }
+.hero h1 { margin: 0; color: var(--on); font-weight: 500; font-size: 30px; line-height: 1.1; letter-spacing: -.035em; }
+.hero h1 span { color: var(--muted); }
+.nums { display: flex; gap: 36px; }
+.nums div { display: grid; gap: 2px; }
+.nums b { color: var(--on); font-family: var(--mono); font-weight: 500; font-size: 24px; letter-spacing: -.03em; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.nums span { font-size: 12.5px; color: var(--muted); }
+.nums .rv b { color: var(--on); }
+
+.tabs { margin: 0 28px; display: flex; gap: 24px; border-bottom: 1px solid var(--line); }
+.tab { position: relative; padding: 0 0 12px; border: 0; background: none; cursor: pointer; font-size: 13.5px; color: var(--muted); display: inline-flex; gap: 8px; align-items: center; }
+.tab .c { font-size: 12px; color: var(--faint); font-variant-numeric: tabular-nums; }
+.tab[aria-selected="true"] { color: var(--on); }
+.tab[aria-selected="true"]::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--bright); border-radius: 2px; }
+
+.list { list-style: none; margin: 0; padding: 6px 16px 20px; overflow-y: auto; min-height: 0; }
+@media (max-width: 860px) { .list { max-height: 520px; } }
+.row { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 14px 12px; border-radius: 10px; cursor: pointer; transition: background .25s var(--ease); }
+.row + .row { box-shadow: inset 0 1px 0 var(--line); }
+.row:hover, .row.sel { background: rgba(255,255,255,.04); box-shadow: none; }
+.row:hover + .row, .row.sel + .row { box-shadow: none; }
+.row .d { width: 8px; height: 8px; border-radius: 50%; }
+.row .tx { min-width: 0; display: grid; gap: 2px; }
+.row .t1 { color: var(--on); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .t2 { font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .tag { font-size: 11.5px; color: var(--review); white-space: nowrap; }
+.row .tag.wait { color: var(--glow); }
+.row.new { animation: arrive .8s var(--ease); }
+@keyframes arrive { from { opacity: 0; transform: translateY(-6px); background: rgba(79,134,240,.10); } to { opacity: 1; transform: none; } }
+.empty { padding: 40px 12px; text-align: center; color: var(--muted); font-size: 13px; }
+
+/* map and its tools */
+.mapbox { position: relative; min-width: 0; min-height: 0; }
+@media (max-width: 860px) { .mapbox { order: 1; } }
+#map { position: absolute; inset: 0; background: var(--navy); }
+.glass { background: var(--glass); border: 1px solid var(--line-2); }
+.types { position: absolute; top: 16px; left: 16px; z-index: 2; display: flex; gap: 2px; padding: 4px; border-radius: 6px; max-width: calc(100% - 32px); overflow-x: auto; }
+.type { display: inline-flex; align-items: center; gap: 7px; padding: 7px 12px; border: 0; border-radius: 4px; background: transparent; cursor: pointer; font-size: 12.5px; color: var(--on); white-space: nowrap; transition: background .2s, color .2s; }
+.type i { width: 7px; height: 7px; border-radius: 50%; }
+.type:hover { background: rgba(255,255,255,.06); }
+.type[aria-pressed="false"] { color: var(--faint); }
+.type[aria-pressed="false"] i { opacity: .3; }
+
+.maplibregl-ctrl-bottom-right .maplibregl-ctrl-group { margin: 0 18px 148px 0 !important; }
+@media (max-width: 860px) { .maplibregl-ctrl-bottom-right .maplibregl-ctrl-group { margin-bottom: 16px !important; } }
+.maplibregl-ctrl-group { background: var(--glass) !important; border: 1px solid var(--line-2); border-radius: 6px !important; box-shadow: none !important; overflow: hidden; }
+.maplibregl-ctrl-group button { width: 36px; height: 36px; }
+.maplibregl-ctrl-group button + button { border-top: 1px solid var(--line-2) !important; }
+.maplibregl-ctrl-icon { filter: invert(1) brightness(1.6); }
+.maplibregl-ctrl-attrib { background: rgba(17,20,24,.75) !important; color: var(--faint); font-size: 10.5px; }
+.maplibregl-ctrl-attrib a { color: var(--muted) !important; }
+.maplibregl-ctrl-attrib-button { filter: invert(1); }
+
+.counter { position: absolute; right: 18px; bottom: 34px; z-index: 2; padding: 16px 20px; border-radius: 6px; }
+.counter b { display: block; color: var(--on); font-family: var(--mono); font-weight: 500; font-size: 34px; letter-spacing: -.04em; line-height: 1; font-variant-numeric: tabular-nums; }
+.counter b.bump { animation: bump 1s var(--ease); }
+@keyframes bump { from { color: var(--ok); } to { color: var(--on); } }
+.counter span { display: block; margin-top: 8px; font-size: 12.5px; color: var(--muted); }
+@media (max-width: 860px) { .counter { left: 12px; right: auto; bottom: 28px; padding: 12px 16px; } .counter b { font-size: 28px; } }
+
+/* report card */
+.card { position: absolute; top: 72px; left: 16px; z-index: 3; width: 340px; max-width: calc(100% - 32px); max-height: calc(100% - 88px); overflow: auto; border-radius: 6px; box-shadow: 0 20px 40px -24px rgba(0,0,0,.8); animation: pop .45s var(--ease); }
+@keyframes pop { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.card-in { padding: 20px 22px 22px; display: grid; gap: 18px; }
+.c-head { display: flex; align-items: start; justify-content: space-between; gap: 12px; }
+.c-kind { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--muted); }
+.c-kind i { width: 8px; height: 8px; border-radius: 50%; }
+.x { width: 30px; height: 30px; flex: none; border-radius: 4px; border: 0; background: rgba(255,255,255,.06); color: var(--muted); cursor: pointer; }
+.x:hover { color: var(--on); background: rgba(255,255,255,.1); }
+.c-quote { margin: 0; color: var(--on); font-size: 17px; line-height: 1.4; letter-spacing: -.015em; font-weight: 400; }
+.c-meta { margin-top: 6px; font-size: 12.5px; color: var(--muted); }
+.c-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.c-facts div { padding: 12px 0; display: grid; gap: 2px; min-width: 0; }
+.c-facts div + div { padding-left: 14px; border-left: 1px solid var(--line); }
+.c-facts b { color: var(--on); font-family: var(--mono); font-weight: 500; font-size: 17px; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.c-facts span { font-size: 11.5px; color: var(--muted); }
+.c-why { margin: 0; font-size: 13.5px; color: var(--body); }
+.c-why em { font-style: normal; color: var(--muted); }
+.decision { border-radius: 4px; padding: 14px 16px; display: grid; gap: 6px; }
+.decision.review { background: rgba(212,165,59,.08); border: 1px solid rgba(212,165,59,.25); }
+.decision.pub { background: rgba(70,169,121,.08); border: 1px solid rgba(70,169,121,.25); }
+.decision b { font-weight: 500; font-size: 14px; }
+.decision.review b { color: var(--review); }
+.decision.pub b { color: var(--ok); }
+.decision span { font-size: 13px; color: var(--body); }
+.acts { display: flex; gap: 8px; }
+.btn { flex: 1; min-height: 40px; border-radius: 4px; border: 1px solid var(--line-2); background: transparent; color: var(--on); font-size: 13.5px; font-weight: 500; cursor: pointer; transition: background .2s; }
+.btn:hover { background: rgba(255,255,255,.06); }
+.btn.primary { background: var(--blue); border-color: var(--blue); }
+.btn.primary:hover { background: #1a52c4; }
+.err { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px; color: var(--muted); }
+
+/* pass 2: wordmark, typed filters, numbered rows, fuller card */
+.logo { gap: 10px; align-items: baseline; font-size: 19px; font-weight: 600; letter-spacing: -.035em; }
+.logo small { font-family: var(--mono); font-size: 10.5px; font-weight: 400; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.types { gap: 4px; padding: 5px; }
+.type { --tc: #c9ced6; gap: 8px; padding: 7px 11px; border: 1px solid transparent; color: var(--on); }
+.type .ic { color: var(--tc); flex: none; }
+.type .tn { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.type[aria-pressed="true"] { background: color-mix(in srgb, var(--tc) 14%, transparent); border-color: color-mix(in srgb, var(--tc) 38%, transparent); }
+.type[aria-pressed="false"] { color: var(--faint); }
+.type[aria-pressed="false"] .ic { color: var(--faint); }
+.row { grid-template-columns: 34px minmax(0, 1fr) auto; gap: 14px; padding: 13px 12px; }
+.row .pb { width: 34px; height: 24px; display: grid; place-items: center; border-radius: 4px; font-family: var(--mono); font-size: 11.5px; font-weight: 600; color: var(--pc); background: color-mix(in srgb, var(--pc) 14%, transparent); border: 1px solid color-mix(in srgb, var(--pc) 35%, transparent); }
+.row .t2 { display: flex; gap: 10px; align-items: center; min-width: 0; overflow: hidden; }
+.row .rt { display: grid; justify-items: end; gap: 5px; }
+.row .ago { font-size: 11.5px; color: var(--faint); white-space: nowrap; }
+.where { white-space: nowrap; }
+.row .t2 > span { white-space: nowrap; }
+.row .rid { font-family: var(--mono); font-size: 11.5px; color: var(--faint); }
+.row .tt { display: inline-flex; align-items: center; gap: 5px; color: var(--body); }
+.row .tt .ic { color: var(--tc); }
+.row .tag { font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; padding: 3px 7px; border-radius: 3px; border: 1px solid rgba(212,165,59,.4); color: var(--review); }
+.row .tag.ok { border-color: rgba(70,169,121,.35); color: var(--ok); }
+.row .tag.wait { border-color: rgba(169,194,238,.35); }
+.card { width: 380px; }
+.card-in { gap: 16px; }
+.c-idrow { display: flex; align-items: center; gap: 10px; }
+.c-id { font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
+.c-st { font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; padding: 3px 7px; border-radius: 3px; }
+.c-st.rv { color: var(--review); border: 1px solid rgba(212,165,59,.4); }
+.c-st.ok { color: var(--ok); border: 1px solid rgba(70,169,121,.35); }
+.c-kind { display: inline-flex; align-items: center; gap: 7px; color: var(--on); font-size: 13px; font-weight: 500; margin-bottom: 8px; }
+.c-kind .ic { color: var(--tc); }
+.c-kind > span { color: var(--muted); font-weight: 400; padding-left: 8px; border-left: 1px solid var(--line-2); }
+.c-quote { font-size: 17.5px; }
+.c-meta { margin: 6px 0 0; }
+.c-meter { display: grid; gap: 8px; }
+.c-mh { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--muted); }
+.c-mh b { font-family: var(--mono); font-weight: 500; color: var(--on); }
+.segs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.segs i { height: 6px; border-radius: 2px; background: rgba(255,255,255,.08); }
+.segs i.on { background: var(--pc); }
+.cbar { position: relative; height: 6px; border-radius: 2px; background: rgba(255,255,255,.08); }
+.cbar i { position: absolute; inset: 0 auto 0 0; border-radius: 2px; background: var(--bright); }
+.cbar u { position: absolute; left: 70%; top: -4px; width: 2px; height: 14px; background: var(--on); opacity: .7; }
+.c-hint { font-size: 11.5px; color: var(--faint); }
+.c-facts { border-radius: 0; }
+.c-why { display: grid; gap: 4px; font-size: 13.5px; color: var(--body); }
+.c-why span { font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.tl { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.tl li { position: relative; display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; padding: 0 0 12px; }
+.tl li::before { content: ""; position: absolute; left: 10.5px; top: 22px; bottom: 0; width: 1px; background: var(--line-2); }
+.tl li:last-child { padding-bottom: 0; }
+.tl li:last-child::before { display: none; }
+.tl em { font-style: normal; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-family: var(--mono); font-size: 11px; border: 1px solid var(--line-2); color: var(--muted); background: var(--glass); }
+.tl li.done em { background: var(--blue); border-color: var(--blue); color: #fff; }
+.tl li.now em { border-color: var(--review); color: var(--review); }
+.tl b { display: block; font-size: 13px; font-weight: 500; color: var(--on); }
+.tl span { font-size: 12px; color: var(--muted); }
+.tl li.later b { color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="panel" aria-label="Reports">
+    <div class="top">
+      <div class="logo">Streetwise</div>
+      <span class="where">Colombo, example data</span>
+    </div>
+    <div class="hero">
+      <h1>Fixing the city, <span>report by report.</span></h1>
+      <div class="nums">
+        <div><b id="n-open">0</b><span>Open reports</span></div>
+        <div class="rv"><b id="n-review">0</b><span>Need review</span></div>
+        <div><b>214</b><span>Fixed in 30 days</span></div>
+      </div>
+    </div>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" aria-selected="true" data-tab="all">All reports <span class="c" id="c-all"></span></button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="review">Need review <span class="c" id="c-review"></span></button>
+    </div>
+    <ul class="list" id="list" aria-live="polite"></ul>
+  </aside>
+
+  <div class="mapbox">
+    <div id="map" aria-label="Map of reports"></div>
+    <div class="types glass" id="types" role="group" aria-label="Show report types"></div>
+    <div class="counter glass" aria-live="polite"><b id="resolved">3,086</b><span>issues fixed, and counting</span></div>
+    <div id="card-slot"></div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script>
+(function () {
+  var COLOR = { 5: '#e5484d', 4: '#e07b39', 3: '#d4a53b', 2: '#4f86f0', 1: '#7b8494' };
+  var TYPES = ['Pothole', 'Street light', 'Flooding', 'Rubbish'];
+  var TYPE_COLOR = { 'Pothole': '#d08a52', 'Street light': '#e3b341', 'Flooding': '#4aa3df', 'Rubbish': '#6fb07f' };
+  var ICON = {
+    'Pothole': '<path d="M2 10.5c0-1.7 2.7-3 6-3s6 1.3 6 3-2.7 3-6 3-6-1.3-6-3Z"/><path d="M6 9.5l1.5-1 1 1.4 1.6-.9"/><path d="M8 2.5v2.5"/>',
+    'Street light': '<path d="M5 14.5V5a3 3 0 0 1 3-3h3"/><path d="M9.5 4.5h3l-.6 1.8H10.1Z"/><path d="M3 14.5h4"/>',
+    'Flooding': '<path d="M1.5 6.5c1.6-1.2 3-1.2 4.3 0s2.7 1.2 4.3 0 3-1.2 4.4 0"/><path d="M1.5 10.5c1.6-1.2 3-1.2 4.3 0s2.7 1.2 4.3 0 3-1.2 4.4 0"/>',
+    'Rubbish': '<path d="M2.5 4.5h11"/><path d="M6 4.5V3h4v1.5"/><path d="M4 4.5l.8 9.5h6.4l.8-9.5"/><path d="M7 7v4.5M9 7v4.5"/>'
+  };
+  function icon(t, size) { return '<svg class="ic" width="' + (size || 14) + '" height="' + (size || 14) + '" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICON[t] + '</svg>'; }
+  function sizeOf(r) { return r.p >= 4 ? 'Large' : r.p === 3 ? 'Medium' : 'Small'; }
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  var ZONES = [
+    { id: 'Z-01', name: 'Fort and Pettah', box: [79.842, 6.929, 79.862, 6.944], status: 'Active' },
+    { id: 'Z-02', name: 'Kollupitiya', box: [79.849, 6.901, 79.862, 6.926], status: 'Active' },
+    { id: 'Z-03', name: 'Borella', box: [79.868, 6.906, 79.889, 6.925], status: 'Paused', reason: 'Crew on a flood call since 26 Oct' },
+    { id: 'Z-04', name: 'Wellawatte', box: [79.856, 6.868, 79.871, 6.898], status: 'Active' },
+    { id: 'Z-05', name: 'Narahenpita', box: [79.873, 6.884, 79.894, 6.903], status: 'Active' },
+    { id: 'Z-06', name: 'Rajagiriya', box: [79.893, 6.904, 79.914, 6.924], status: 'Active' }
+  ];
+  var POOL = {
+    'Pothole': [['Deep pothole by the bus stop, a scooter nearly fell', 4, .82, 'Road damage at a bus stop, near accident reported'],
+                ['Pothole opening up outside the post office', 3, .91, 'Road damage on a busy street, no injury reported'],
+                ['Road has caved in near the canal bridge, a car wheel went in', 5, .9, 'Collapsed surface on a main route, vehicle damaged'],
+                ['Small crack getting bigger near the school gate', 2, .79, 'Minor damage, but next to a school'],
+                ['Uneven patch after the pipe works, bikes swerving', 3, .74, 'Poor repair after works, cyclists at risk']],
+    'Street light': [['Whole row of lights out on the side road', 3, .9, 'Several lights out on a residential road'],
+                     ['Lamp at the steps has been off for 3 nights', 2, .94, 'Single light out, low traffic area'],
+                     ['Light flickering at the library corner', 1, .95, 'Flickering, still working'],
+                     ['Not sure, but the path lights seem dim lately', 2, .62, 'Unclear fault, the reporter is unsure'],
+                     ['Pole leaning over the road after the storm, wires low', 5, .86, 'Fallen pole with low wires over traffic']],
+    'Flooding': [['Water up to the knees at the junction, cars stuck', 5, .88, 'Road blocked by deep water, vehicles stranded'],
+                 ['Drain blocked, water rising in the lane after rain', 4, .63, 'Blocked drain, water level unclear from the text'],
+                 ['Puddle across half the road every time it rains', 2, .77, 'Recurring surface water, passable'],
+                 ['Canal close to overflowing behind the houses', 4, .71, 'Risk to homes if rain continues']],
+    'Rubbish': [['Market bins overflowing into the drain', 3, .87, 'Large pile next to a drain, flood risk if it rains'],
+                ['Bags dumped behind the bus shelter', 2, .86, 'Dumped household waste, no hazard'],
+                ['Someone left a chair on the pavement', 1, .58, 'Small item, may not be public waste'],
+                ['Broken glass spread across the footpath', 3, .84, 'Sharp debris on a walking route']]
+  };
+
+  var seed = 7; function rnd() { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }
+  function pick(a) { return a[Math.floor(rnd() * a.length)]; }
+  var ROWS = []; TYPES.forEach(function (t) { POOL[t].forEach(function (row) { ROWS.push({ t: t, row: row }); }); });
+  for (var q = ROWS.length - 1; q > 0; q--) { var j = Math.floor(rnd() * (q + 1)), tmp = ROWS[q]; ROWS[q] = ROWS[j]; ROWS[j] = tmp; }
+  var rowAt = 0, reports = [], nextId = 400;
+  function make(minsAgo, forced) {
+    var nx = ROWS[rowAt++ % ROWS.length];
+    var t = forced ? forced.t : nx.t, row = forced ? forced.row : nx.row, z = forced ? forced.z : pick(ZONES);
+    return { id: 'r-0' + (nextId++), t: t, text: row[0], p: row[1], c: row[2], why: row[3], z: z,
+      lng: z.box[0] + rnd() * (z.box[2] - z.box[0]), lat: z.box[1] + rnd() * (z.box[3] - z.box[1]), ago: minsAgo };
+  }
+  for (var i = 0; i < 46; i++) reports.push(make(Math.floor(5 + rnd() * 900)));
+  reports.push(make(3, { t: 'Flooding', row: POOL['Flooding'][0], z: ZONES[2] }));
+  reports.sort(function (a, b) { return a.ago - b.ago; });
+
+  function needsReview(r) { return !r.approved && (r.p >= 4 || r.c < 0.7); }
+  function ago(m) { return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : Math.floor(m / 60) + ' h ago'; }
+  function decision(r) {
+    if (r.approved) return { cls: 'pub', title: 'Approved and published', text: 'A staff member checked it. It is on the public map.' };
+    if (r.p >= 4) return { cls: 'review', title: 'Sent to a person', text: 'Priority ' + r.p + ' is 4 or more. Urgent reports always need a staff decision.' };
+    if (r.c < 0.7) return { cls: 'review', title: 'Sent to a person', text: 'The AI is only ' + Math.round(r.c * 100) + '% sure, under the 70% rule.' };
+    return { cls: 'pub', title: 'Published automatically', text: 'Priority under 4 and the AI is ' + Math.round(r.c * 100) + '% sure, so the rules let it through.' };
+  }
+
+  var active = {}; TYPES.forEach(function (t) { active[t] = true; });
+  var tab = 'all', selected = null, map = null, ready = false;
+  function visible() { return reports.filter(function (r) { return active[r.t]; }); }
+
+  /* type pills on the map */
+  var tEl = document.getElementById('types');
+  TYPES.forEach(function (t) {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'type'; b.setAttribute('aria-pressed', 'true');
+    b.style.setProperty('--tc', TYPE_COLOR[t]); b.dataset.type = t;
+    b.innerHTML = icon(t) + '<span>' + t + '</span><span class="tn"></span>';
+    b.addEventListener('click', function () { active[t] = !active[t]; b.setAttribute('aria-pressed', String(active[t])); refresh(); });
+    tEl.appendChild(b);
+  });
+
+  /* tabs */
+  Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (b) {
+    b.addEventListener('click', function () {
+      tab = b.dataset.tab;
+      Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (x) { x.setAttribute('aria-selected', String(x === b)); });
+      renderList();
+    });
+  });
+
+  /* list */
+  var listEl = document.getElementById('list');
+  function renderList(newId) {
+    var all = visible(), rev = all.filter(function (r) { return !r.thinking && needsReview(r); });
+    var seen = {}, rows = (tab === 'review' ? rev : all).filter(function (r) { if (seen[r.text]) return false; seen[r.text] = 1; return true; }).slice(0, 30);
+    document.getElementById('n-open').textContent = all.length;
+    document.getElementById('n-review').textContent = rev.length;
+    document.getElementById('c-all').textContent = all.length;
+    document.getElementById('c-review').textContent = rev.length;
+    Array.prototype.forEach.call(document.querySelectorAll('.type'), function (b) {
+      b.querySelector('.tn').textContent = reports.filter(function (r) { return r.t === b.dataset.type; }).length;
+    });
+    listEl.innerHTML = rows.length ? '' : '<li class="empty">Nothing to review. Every report passed the rules.</li>';
+    rows.forEach(function (r) {
+      var li = document.createElement('li'); li.className = 'row' + (selected === r ? ' sel' : '') + (r.id === newId ? ' new' : ''); li.tabIndex = 0;
+      var tag = r.thinking ? '<span class="tag wait">Triaging</span>' : (needsReview(r) ? '<span class="tag">Review</span>' : '<span class="tag ok">Live</span>');
+      var right = '<div class="rt">' + tag + '<span class="ago">' + ago(r.ago) + '</span></div>';
+      li.style.setProperty('--pc', COLOR[r.p]); li.style.setProperty('--tc', TYPE_COLOR[r.t]);
+      li.innerHTML = '<span class="pb" title="Priority ' + r.p + ' of 5">P' + r.p + '</span>' +
+        '<div class="tx"><span class="t1">' + r.text + '</span><span class="t2"><span class="rid">' + r.id + '</span><span class="tt">' + icon(r.t, 12) + r.t + '</span><span>' + r.z.name + '</span></span></div>' + right;
+      li.addEventListener('click', function () { if (!r.thinking) select(r, true); });
+      li.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !r.thinking) select(r, true); });
+      listEl.appendChild(li);
+    });
+  }
+
+  /* card */
+  var slot = document.getElementById('card-slot');
+  function renderCard() {
+    if (!selected) { slot.innerHTML = ''; return; }
+    var r = selected, d = decision(r), pc = COLOR[r.p], review = needsReview(r);
+    var zone = r.z.name + (r.z.status === 'Active' ? '' : ', paused');
+    var conf = Math.round(r.c * 100);
+    var segs = ''; for (var k = 1; k <= 5; k++) segs += '<i class="' + (k <= r.p ? 'on' : '') + '"></i>';
+    var steps = [
+      ['Received', 'Citizen report, ' + ago(r.ago), 'done'],
+      ['Triaged by the AI', r.t + ', priority ' + r.p + ', ' + conf + '% sure', 'done'],
+      review ? ['Waiting for staff', d.text, 'now'] : [r.approved ? 'Approved by staff' : 'Published by the rules', 'On the public map', 'done'],
+      ['Fixed', 'Crew zone ' + r.z.id + ' closes it', review ? 'later' : 'now']
+    ];
+    var tl = steps.map(function (st, i) { return '<li class="' + st[2] + '"><em>' + (i + 1) + '</em><div><b>' + st[0] + '</b><span>' + st[1] + '</span></div></li>'; }).join('');
+    slot.innerHTML =
+      '<div class="card glass" role="dialog" aria-label="Report ' + r.id + '" style="--pc:' + pc + ';--tc:' + TYPE_COLOR[r.t] + '"><div class="card-in">' +
+        '<div class="c-head"><div class="c-idrow"><span class="c-id">' + r.id + '</span><span class="c-st ' + (review ? 'rv' : 'ok') + '">' + (review ? 'Needs review' : 'Published') + '</span></div>' +
+        '<button class="x" id="cx" aria-label="Close">&#x2715;</button></div>' +
+        '<div><span class="c-kind">' + icon(r.t, 15) + r.t + '<span>' + zone + '</span></span>' +
+        '<p class="c-quote">' + r.text + '</p><p class="c-meta">Reported ' + ago(r.ago) + ' by a citizen</p></div>' +
+        '<div class="c-meter"><div class="c-mh"><span>Priority</span><b>' + r.p + ' of 5</b></div><div class="segs">' + segs + '</div></div>' +
+        '<div class="c-meter"><div class="c-mh"><span>AI confidence</span><b>' + conf + '%</b></div><div class="cbar"><i style="width:' + conf + '%"></i><u title="The 70% rule"></u></div><div class="c-hint">Under 70% always goes to a person</div></div>' +
+        '<div class="c-facts">' +
+          '<div><b>' + r.z.id + '</b><span>Crew zone</span></div>' +
+          '<div><b>' + sizeOf(r) + '</b><span>Size</span></div>' +
+          '<div><b>Model</b><span>Triaged by</span></div>' +
+        '</div>' +
+        '<div class="c-why"><span>Why the AI decided this</span>' + r.why + '</div>' +
+        '<div class="decision ' + d.cls + '"><b>' + d.title + '</b><span>' + d.text + '</span></div>' +
+        '<ol class="tl">' + tl + '</ol>' +
+        (review ? '<div class="acts"><button class="btn primary" id="ap">Approve and publish</button><button class="btn" id="rj">Reject</button></div>' : '') +
+      '</div></div>';
+    document.getElementById('cx').onclick = function () { select(null); };
+    var ap = document.getElementById('ap'), rj = document.getElementById('rj');
+    if (ap) ap.onclick = function () { r.approved = true; refresh(); renderCard(); };
+    if (rj) rj.onclick = function () { reports = reports.filter(function (x) { return x !== r; }); select(null); refresh(); };
+  }
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && selected) select(null); });
+  function select(r, fly) {
+    selected = r; renderList(); renderCard();
+    if (r && fly && map) map.flyTo({ center: [r.lng, r.lat], zoom: Math.max(map.getZoom(), 15), speed: 1.2, curve: 1.4, essential: true, offset: window.innerWidth > 860 ? [170, 0] : [0, 0] });
+    if (map && ready) map.getSource('sel').setData(fc(r ? [r] : []));
+  }
+
+  function fc(list) {
+    return { type: 'FeatureCollection', features: list.map(function (r) {
+      return { type: 'Feature', geometry: { type: 'Point', coordinates: [r.lng, r.lat] }, properties: { id: r.id, p: r.p, color: COLOR[r.p], urgent: r.p === 5 ? 1 : 0 } };
+    }) };
+  }
+  function zonesFc() {
+    return { type: 'FeatureCollection', features: ZONES.map(function (z) {
+      var b = z.box; return { type: 'Feature', properties: { name: z.name, paused: z.status !== 'Active' ? 1 : 0 },
+        geometry: { type: 'Polygon', coordinates: [[[b[0], b[1]], [b[2], b[1]], [b[2], b[3]], [b[0], b[3]], [b[0], b[1]]]] } };
+    }) };
+  }
+  function refresh(newId) {
+    renderList(newId);
+    if (map && ready) map.getSource('reports').setData(fc(visible().filter(function (r) { return !r.thinking; })));
+  }
+
+  /* recolour the free dark style into Dynarq navy */
+  function tint(style) {
+    style.layers.forEach(function (l) {
+      var id = l.id, p = l.paint = l.paint || {};
+      if (id === 'background') p['background-color'] = '#111418';
+      else if (id === 'water') p['fill-color'] = '#0b0d10';
+      else if (/^landuse|^landcover/.test(id)) p['fill-color'] = '#14171c';
+      else if (id === 'building') { p['fill-color'] = '#171a20'; p['fill-outline-color'] = '#1c2027'; }
+      else if (id === 'waterway') p['line-color'] = '#0e1114';
+      else if (/casing/.test(id) && l.type === 'line') p['line-color'] = '#121519';
+      else if (/^highway_motorway|^highway_major/.test(id) && l.type === 'line') p['line-color'] = '#2e343d';
+      else if (/^highway|^road|^aeroway/.test(id) && l.type === 'line') { p['line-color'] = '#22272e'; }
+      else if (/^railway/.test(id) && l.type === 'line') p['line-color'] = '#262b33';
+      else if (/^boundary/.test(id)) p['line-color'] = '#3a414b';
+      if (l.type === 'symbol') { p['text-color'] = /^place/.test(id) ? '#8a919c' : '#5c636e'; p['text-halo-color'] = '#111418'; p['text-halo-width'] = 1.2; }
+    });
+    return style;
+  }
+
+  function start(style) {
+    map = new maplibregl.Map({ container: 'map', style: tint(style), center: [79.874, 6.905], zoom: 12.6, pitch: 0, attributionControl: { compact: true }, fadeDuration: 200 });
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
+    map.on('load', function () {
+      map.addSource('zones', { type: 'geojson', data: zonesFc() });
+      map.addLayer({ id: 'zone-fill', type: 'fill', source: 'zones', paint: { 'fill-color': '#2466e8', 'fill-opacity': ['case', ['==', ['get', 'paused'], 1], 0.16, 0.08] } });
+      map.addLayer({ id: 'zone-glow', type: 'line', source: 'zones', paint: { 'line-color': '#4f86f0', 'line-width': 8, 'line-blur': 8, 'line-opacity': 0 } });
+      map.addLayer({ id: 'zone-line', type: 'line', source: 'zones', filter: ['==', ['get', 'paused'], 0], paint: { 'line-color': '#4f86f0', 'line-width': 1.3, 'line-opacity': 0.75 } });
+      map.addLayer({ id: 'zone-line-paused', type: 'line', source: 'zones', filter: ['==', ['get', 'paused'], 1], paint: { 'line-color': '#d4a53b', 'line-width': 1.5, 'line-opacity': 0.85, 'line-dasharray': [3, 2] } });
+      map.addLayer({ id: 'zone-name', type: 'symbol', source: 'zones', layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': 12, 'text-letter-spacing': 0.05, 'text-transform': 'uppercase', 'text-anchor': 'top-left', 'text-offset': [0.6, 0.6], 'symbol-placement': 'point' }, paint: { 'text-color': '#c9ced6', 'text-opacity': 0.75, 'text-halo-color': '#111418', 'text-halo-width': 1.4 } });
+
+      map.addSource('reports', { type: 'geojson', data: fc(visible()), cluster: true, clusterRadius: 46, clusterMaxZoom: 14 });
+      map.addLayer({ id: 'cl-halo', type: 'circle', source: 'reports', filter: ['has', 'point_count'], paint: { 'circle-color': '#4f86f0', 'circle-opacity': 0.14, 'circle-radius': ['step', ['get', 'point_count'], 26, 8, 32, 16, 38] } });
+      map.addLayer({ id: 'cl', type: 'circle', source: 'reports', filter: ['has', 'point_count'], paint: { 'circle-color': '#2466e8', 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 1.5, 'circle-radius': ['step', ['get', 'point_count'], 16, 8, 20, 16, 24] } });
+      map.addLayer({ id: 'cl-n', type: 'symbol', source: 'reports', filter: ['has', 'point_count'], layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-font': ['Noto Sans Regular'], 'text-size': 13 }, paint: { 'text-color': '#ffffff' } });
+      map.addLayer({ id: 'pulse', type: 'circle', source: 'reports', filter: ['all', ['!', ['has', 'point_count']], ['==', ['get', 'urgent'], 1]], paint: { 'circle-color': 'rgba(0,0,0,0)', 'circle-stroke-color': '#e5484d', 'circle-stroke-width': 2, 'circle-radius': 10, 'circle-stroke-opacity': 0.6 } });
+      map.addLayer({ id: 'pt-halo', type: 'circle', source: 'reports', filter: ['!', ['has', 'point_count']], paint: { 'circle-color': ['get', 'color'], 'circle-opacity': 0.22, 'circle-radius': 13, 'circle-blur': 0.4 } });
+      map.addLayer({ id: 'pt', type: 'circle', source: 'reports', filter: ['!', ['has', 'point_count']], paint: { 'circle-color': ['get', 'color'], 'circle-radius': 6.5, 'circle-stroke-color': '#111418', 'circle-stroke-width': 2 } });
+      map.addSource('sel', { type: 'geojson', data: fc([]) });
+      map.addLayer({ id: 'sel', type: 'circle', source: 'sel', paint: { 'circle-color': 'rgba(0,0,0,0)', 'circle-radius': 14, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2.5 } });
+      map.addSource('ripple', { type: 'geojson', data: fc([]) });
+      map.addLayer({ id: 'ripple', type: 'circle', source: 'ripple', paint: { 'circle-color': 'rgba(0,0,0,0)', 'circle-radius': 8, 'circle-stroke-color': '#a9c2ee', 'circle-stroke-width': 2, 'circle-stroke-opacity': 0 } });
+      ready = true;
+      map.resize();
+      map.fitBounds([[79.842, 6.868], [79.914, 6.944]], { padding: window.innerWidth > 860 ? { top: 90, bottom: 60, left: 60, right: 80 } : { top: 70, bottom: 20, left: 20, right: 20 }, duration: 0 });
+
+      map.on('click', 'cl', function (e) {
+        var f = map.queryRenderedFeatures(e.point, { layers: ['cl'] })[0];
+        map.getSource('reports').getClusterExpansionZoom(f.properties.cluster_id).then(function (z) { map.easeTo({ center: f.geometry.coordinates, zoom: z + 0.3, duration: 700 }); });
+      });
+      map.on('click', 'pt', function (e) { var id = e.features[0].properties.id; select(reports.filter(function (r) { return r.id === id; })[0], true); });
+      ['cl', 'pt'].forEach(function (l) { map.on('mouseenter', l, function () { map.getCanvas().style.cursor = 'pointer'; }); map.on('mouseleave', l, function () { map.getCanvas().style.cursor = ''; }); });
+
+      if (!reduce) {
+        var t0 = performance.now();
+        (function frame(now) {
+          var k = ((now - t0) % 1800) / 1800;
+          map.setPaintProperty('pulse', 'circle-radius', 8 + k * 18);
+          map.setPaintProperty('pulse', 'circle-stroke-opacity', 0.7 * (1 - k));
+          requestAnimationFrame(frame);
+        })(t0);
+      }
+    });
+  }
+
+
+  /* a new report arrives and is triaged */
+  function arrive() {
+    var r = make(0); r.thinking = true; reports.unshift(r); refresh(r.id);
+    if (map && ready) {
+      map.getSource('ripple').setData(fc([r]));
+      if (!reduce) {
+        var t0 = performance.now();
+        (function rip(now) { var k = Math.min(1, (now - t0) / 1400); map.setPaintProperty('ripple', 'circle-radius', 8 + k * 40); map.setPaintProperty('ripple', 'circle-stroke-opacity', 0.9 * (1 - k)); if (k < 1) requestAnimationFrame(rip); })(t0);
+      }
+    }
+    setTimeout(function () { r.thinking = false; refresh(); }, 1600);
+  }
+  setInterval(function () { reports.forEach(function (r) { r.ago += 1; }); renderList(); }, 60000);
+  setInterval(arrive, 10000);
+
+  var resolved = 3086, rEl = document.getElementById('resolved');
+  setInterval(function () {
+    resolved += 1; rEl.textContent = resolved.toLocaleString('en-US');
+    rEl.classList.remove('bump'); void rEl.offsetWidth; rEl.classList.add('bump');
+  }, 7000);
+
+  renderList();
+  if (!window.maplibregl) { document.getElementById('map').innerHTML = '<div class="err">The map library did not load. Check the internet connection and reload.</div>'; return; }
+  fetch('https://tiles.openfreemap.org/styles/dark', { signal: AbortSignal.timeout ? AbortSignal.timeout(15000) : undefined })
+    .then(function (res) { if (!res.ok) throw new Error(res.status); return res.json(); })
+    .then(start)
+    .catch(function () { document.getElementById('map').innerHTML = '<div class="err">The map tiles did not load. Check the internet connection and reload.</div>'; });
+})();
+</script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" data-cf-beacon='{"version":"2024.11.0","token":"cc5048bacf0640089461e687f8a86c57","r":1,"spa":2}' crossorigin="anonymous"></script>
+</body>
+</html>
+

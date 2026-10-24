@@ -20,25 +20,9 @@ import settingsRouter from './routes/staff/settings.js';
 import auditRouter    from './routes/staff/audit.js';
 
 // ── Static HTML (inlined via wrangler bundling) ──────────────────────────────
-// These are imported as raw text strings at build time.
+// Only the single frontend (index.html) is served at /.
 // @ts-ignore — text import
-import publicMapHtml  from './public/index.html' with { type: 'text' };
-// @ts-ignore
-import reportHtml     from './public/report.html' with { type: 'text' };
-// @ts-ignore
-import followHtml     from './public/follow.html' with { type: 'text' };
-// @ts-ignore
-import loginHtml      from './public/staff/login.html' with { type: 'text' };
-// @ts-ignore
-import queueHtml      from './public/staff/queue.html' with { type: 'text' };
-// @ts-ignore
-import reviewHtml     from './public/staff/review.html' with { type: 'text' };
-// @ts-ignore
-import zonesHtml      from './public/staff/zones.html' with { type: 'text' };
-// @ts-ignore
-import settingsHtml   from './public/staff/settings.html' with { type: 'text' };
-// @ts-ignore
-import auditHtml      from './public/staff/audit.html' with { type: 'text' };
+import indexHtml from './public/index.html' with { type: 'text' };
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -75,16 +59,7 @@ const html = (content: string) =>
     headers: { 'Content-Type': 'text/html; charset=utf-8' },
   });
 
-app.get('/',               () => html(publicMapHtml as string));
-app.get('/report',         () => html(reportHtml as string));
-app.get('/follow',         () => html(followHtml as string));
-app.get('/staff',          (c) => c.redirect('/staff/login', 302));
-app.get('/staff/login',    () => html(loginHtml as string));
-app.get('/staff/queue',    () => html(queueHtml as string));
-app.get('/staff/review',   () => html(reviewHtml as string));
-app.get('/staff/zones',    () => html(zonesHtml as string));
-app.get('/staff/settings', () => html(settingsHtml as string));
-app.get('/staff/audit',    () => html(auditHtml as string));
+app.get('/', () => html(indexHtml as string));
 
 // ── Global error handlers ──────────────────────────────────────────────────────
 app.onError((err, c) => {
