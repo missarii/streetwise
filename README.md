@@ -1,483 +1,200 @@
-# 🗺️ Streetwise — Colombo City Maintenance Map
+# Streetwise
 
-<div align="center">
+Colombo city maintenance map. Citizens report problems, AI classifies each one, staff review edge cases, the public watches the city get fixed.
 
-![Streetwise Banner](https://img.shields.io/badge/Streetwise-Colombo%20City%20Maintenance-00b4d8?style=for-the-badge&logo=cloudflare&logoColor=white)
-
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-Cloudflare%20Workers-F38020?style=for-the-badge&logo=cloudflare&logoColor=white)](https://streetwise.orangeuni.workers.dev)
-[![Tests](https://img.shields.io/badge/Tests-57%20Passed-10b981?style=for-the-badge&logo=vitest&logoColor=white)](#run-tests)
-[![TypeScript](https://img.shields.io/badge/TypeScript-Strict-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Cloudflare Workers](https://img.shields.io/badge/Deployed%20On-Cloudflare%20Workers-F38020?style=for-the-badge&logo=cloudflare&logoColor=white)](https://workers.cloudflare.com/)
-
-</div>
+**Live:** https://streetwise.orangeuni.workers.dev
 
 ---
 
-## 🎯 What is Streetwise?
+## Logins for marking
 
-**Streetwise** is a real-time city maintenance transparency platform for **Colombo, Sri Lanka**. It bridges the gap between citizens who spot urban problems and the municipal crews who fix them.
+| Role | Email | Password |
+|------|-------|----------|
+| Admin | `admin@streetwise.mark` | `Streetwise#Admin2026` |
+| Staff | `staff@streetwise.mark` | `Streetwise#Staff2026` |
 
-**The problem it solves:** Colombo residents currently have no reliable way to report infrastructure issues (potholes, flooding, broken street lights, rubbish dumps) and have zero visibility into whether anything was done about it. Reports go into a black hole.
-
-**How Streetwise fixes this:**
-1. A citizen photographs a pothole and submits a quick report from their phone
-2. **Cloudflare Workers AI** (LLaMA 3.1-8B) instantly classifies the type, estimates danger level, and assigns the correct city zone
-3. **Deterministic routing rules** decide: publish immediately, send to staff review, or reject
-4. **Staff** review edge cases, approve/reject/merge, and update progress
-5. The **public map** updates in real time — citizens watch the city get fixed
-6. The citizen gets a **private follow link** to track their specific report from submission to resolution
-
-Built in **96 hours** as the Dynarq Systems engineering assessment.
+Admin has access to zones, settings, and audit log in addition to the review queue.
 
 ---
 
-## 🌐 Live URL
+## How to run it locally
 
-| | URL |
-|---|---|
-| 🌍 **Public Map** | **https://streetwise.orangeuni.workers.dev/** |
-| 📝 Report a problem | https://streetwise.orangeuni.workers.dev/report |
-| 🔍 Track your report | https://streetwise.orangeuni.workers.dev/follow?id=…&token=… |
-| 🔐 Staff portal | https://streetwise.orangeuni.workers.dev/staff/login |
+### Prerequisites
 
----
+- Node.js 18 or above
+- npm (bundled with Node)
+- A Cloudflare account (free tier is enough)
+- Wrangler CLI (`npx wrangler --version` to confirm)
 
-## 🔐 Marking Credentials
-
-> Use these to sign in at `/staff/login`
-
-| Role | Email | Password | Access |
-|------|-------|----------|--------|
-| **Admin** | `admin@streetwise.mark` | `Streetwise#Admin2026` | Full access: queue, zones, settings, audit log |
-| **Staff** | `staff@streetwise.mark` | `Streetwise#Staff2026` | Review queue and report actions only |
-
----
-
-## ✨ Features
-
-### 🌍 Public-facing
-| Feature | Description |
-|---------|-------------|
-| **Interactive dark map** | MapLibre GL + OpenFreeMap tiles, Colombo centred, no API key required |
-| **Live report pins** | Colour-coded by type (🕳️ pothole, 💧 flooding, 💡 street light, 🗑️ rubbish) |
-| **Cluster badges** | Dense areas cluster automatically with count badges |
-| **Live stats** | Open reports, fixed in last 30 days, total fixed — updates without reload |
-| **Zone overlay** | 6 Colombo maintenance zones shown on the map |
-| **Report submission** | 3-step form: describe → pin location → optional photo |
-| **Photo upload** | JPEG/PNG up to 5 MB, validated server-side |
-| **Private follow link** | Unique token per report — only you can see your report's full timeline |
-| **Status timeline** | Every status change shown with timestamp on the follow page |
-
-### 🤖 AI Triage Pipeline
-| Feature | Description |
-|---------|-------------|
-| **Workers AI classification** | LLaMA 3.1-8B classifies type, size, priority (1–5), confidence, and reason |
-| **Structured JSON extraction** | Prompt engineered to return JSON; parser handles model preamble |
-| **8-second timeout + 1 retry** | AI calls never block the request; fallback fires automatically |
-| **Keyword fallback** | If AI fails: keyword rules classify type with 93% accuracy |
-| **Zone assignment** | Ray-casting point-in-polygon; nearest-centroid fallback for out-of-bounds |
-| **Deterministic routing rules** | Override AI: `not_relevant`→reject, priority≥4→review, confidence<0.7→review |
-| **Open triage contract** | `POST /api/triage` is a public endpoint — third parties can call it |
-
-### 👮 Staff Portal
-| Feature | Description |
-|---------|-------------|
-| **Review queue** | All `needs_review` reports sorted by priority, with age and zone |
-| **Duplicate detection** | Same-type reports within 200 m shown as possible duplicates |
-| **Approve** | Publishes a report to the public map |
-| **Reject** | Removes from queue with reason (logged to audit) |
-| **Merge** | Links a duplicate to an existing report |
-| **Edit** | Change type, priority, or status in-line |
-| **Zone management** | Pause/unpause any of the 6 zones with reason and end-date |
-| **Live settings** | Change routing thresholds and AI timeout — no redeploy required |
-| **Audit log** | Every change to every report, actor, field, old→new value, timestamp |
-
-### 🔒 Security
-| Feature | Description |
-|---------|-------------|
-| **JWT authentication** | HMAC-SHA256, Workers-native Web Crypto API, no polyfills |
-| **HttpOnly cookies** | Session cookie invisible to JavaScript, SameSite=Strict, Secure |
-| **bcrypt passwords** | Cost 12, constant-time comparison, pure-JS (bcryptjs) |
-| **Rate limiting** | Per-IP sliding window: reports 10/hr, triage 20/hr, login 5/15 min |
-| **Input validation** | All inputs through Zod schemas before any DB write |
-| **SQL injection proof** | Every query uses D1 prepared statements |
-
----
-
-## 🛠️ Technologies Used
-
-### Core Runtime
-| Technology | Version | Purpose |
-|-----------|---------|---------|
-| **Cloudflare Workers** | V8 isolates | Serverless runtime — zero cold starts, global edge |
-| **Cloudflare D1** | SQLite | Relational database — reports, zones, audit log, settings |
-| **Cloudflare Workers AI** | LLaMA 3.1-8B | Report classification and triage |
-| **Hono.js** | ^4 | Lightweight typed HTTP router for Cloudflare Workers |
-
-### Language & Validation
-| Technology | Version | Purpose |
-|-----------|---------|---------|
-| **TypeScript** | ^5 | Strict mode, full type safety end-to-end |
-| **Zod** | ^3 | Runtime schema validation for all API inputs |
-| **bcryptjs** | ^2 | Password hashing (pure JS, no native deps) |
-
-### Frontend
-| Technology | Purpose |
-|-----------|---------|
-| **MapLibre GL JS** | WebGL-powered interactive map |
-| **OpenFreeMap** | Free dark map tiles (no API key) |
-| **Vanilla HTML/CSS/JS** | No framework overhead — HTML bundled by wrangler at deploy |
-| **Inter (Google Fonts)** | Premium typography |
-
-### Testing & Tooling
-| Technology | Purpose |
-|-----------|---------|
-| **Vitest** | Fast unit test runner (57 tests) |
-| **Wrangler CLI** | Cloudflare Workers build, dev server, and deploy |
-| **tsx** | TypeScript execution for scripts |
-
-### Cryptography
-| Technology | Purpose |
-|-----------|---------|
-| **Web Crypto API** | HMAC-SHA256 JWT signing and verification — Workers native |
-
----
-
-## 💻 Run on Localhost
-
-### Requirements
-- Node.js 18+ — `node --version`
-- npm — `npm --version`
-- Cloudflare account (free) + logged-in wrangler
-
-### Quick start
+### 1. Clone and install
 
 ```bash
-# 1. Clone
 git clone https://github.com/missarii/streetwise.git
 cd streetwise
-
-# 2. Install
 npm install
+```
 
-# 3. Create local secrets file
-echo 'JWT_SECRET=any-local-dev-secret-minimum-32-chars-here' > .dev.vars
+### 2. Create a local secrets file
 
-# 4. Create & seed the local database
+```bash
+echo 'JWT_SECRET=any-string-at-least-32-characters-long' > .dev.vars
+```
+
+This file is git-ignored and only used by `wrangler dev`.
+
+### 3. Create and seed the local database
+
+```bash
 npm run db:migrate:local
+```
 
-# 5. Start dev server
+This runs three SQL files in order:
+- `0001_init.sql` — creates all tables and indexes
+- `0002_seed.sql` — loads the 6 Colombo zones, default settings, and the two marking accounts
+- `0003_past_reports.sql` — loads 240 historical reports so the map is not empty
+
+### 4. Start the server
+
+```bash
 npm run dev
 ```
 
-Open **http://localhost:8787** — the full app is running locally.
+Open `http://localhost:8787`.
 
-> ℹ️ **Local AI note:** Workers AI always calls Cloudflare's network — it is not available offline. In local mode, all reports use the keyword-based fallback triage (`confidence=0.55`), which correctly routes everything to `needs_review`. This is expected. The live AI pipeline runs at the Cloudflare URL.
-
-### npm scripts
-
-```bash
-npm run dev                  # Local dev server → http://localhost:8787
-npm test                     # Run all 57 unit tests
-npm run test:watch           # Tests in watch mode
-npm run db:migrate:local     # Apply all 3 SQL migrations locally
-npm run db:migrate:remote    # Apply migrations to production D1
-npm run db:create            # Create a new D1 database on Cloudflare
-npm run accuracy             # Measure triage accuracy against 40 labelled reports
-wrangler deploy              # Build and deploy to Cloudflare
-```
+> The Workers AI binding calls Cloudflare's real network even in local mode. Because this is not available in offline dev, the triage fallback runs instead. Every report will be classified by keyword rules and sent to `needs_review`. This is the correct and expected behaviour for local development. The full AI pipeline runs at the live Cloudflare URL.
 
 ---
 
-## 🚀 Deploy from Scratch
+## How to deploy it from nothing
+
+Starting from a fresh Cloudflare account with no existing Workers or D1 databases.
+
+### 1. Log in to Cloudflare
 
 ```bash
-# 1. Log in to Cloudflare
-wrangler login
+npx wrangler login
+wrangler whoami   # confirm
+```
 
-# 2. Create D1 database
+### 2. Create the D1 database
+
+```bash
 npm run db:create
-# Copy the database_id into wrangler.toml → database_id = "…"
-
-# 3. Set JWT secret (production)
-wrangler secret put JWT_SECRET
-# Enter: openssl rand -base64 64
-
-# 4. Apply migrations to production
-npm run db:migrate:remote
-# Confirm each of the 3 prompts with Y
-
-# 5. Deploy
-wrangler deploy
-# → https://streetwise.YOUR-SUBDOMAIN.workers.dev
 ```
 
----
+The output includes a line like:
 
-## 🧪 Tests
+```
+database_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+```
+
+Open `wrangler.toml` and paste that ID into the `database_id` field under `[[d1_databases]]`.
+
+### 3. Set the JWT secret
 
 ```bash
-npm test
+wrangler secret put JWT_SECRET
 ```
 
-```
- ✓ tests/rules.test.ts      (13 tests)  Routing rules — all combinations + boundary values
- ✓ tests/fallback.test.ts   (14 tests)  Keyword triage — type detection + priority escalation
- ✓ tests/validation.test.ts (21 tests)  Input schemas — text length, lat/lng, photo type/size
- ✓ tests/roles.test.ts       (9 tests)  JWT — sign, verify, tamper, expiry, role gates
+When prompted, enter a random string of at least 64 characters. You can generate one with:
 
- Test Files  4 passed (4)
-      Tests 57 passed (57)
-   Duration  ~900ms
+```bash
+openssl rand -base64 64
+```
+
+### 4. Run the production migrations
+
+```bash
+npm run db:migrate:remote
+```
+
+Three prompts will appear, one per migration file. Confirm each with `Y`. After this the database contains the schema, zones, marking accounts, settings, and 240 past reports.
+
+### 5. Deploy
+
+```bash
+wrangler deploy
+```
+
+The live URL is printed at the end. The app is fully operational immediately.
+
+---
+
+## Decisions I took and why
+
+**Hono over a minimal router.** Hono gives typed bindings, middleware composition, and a file-per-route structure that is easy to review. The bundle overhead is negligible.
+
+**Ray-casting point-in-polygon, not Turf.js.** The 6 Colombo zones are simple polygons with five or six points each. Ray casting is 20 lines of code, no external dependency, no `Buffer` polyfill needed in the Workers runtime, and I can read and test every line. Turf adds 150 KB and has Node.js assumptions I would have to polyfill.
+
+**Keyword fallback that always returns a result.** Workers AI can time out, return garbled JSON, or be unavailable. The fallback ensures no report is ever lost. It sets `confidence = 0.55`, which is below the 0.70 threshold, so the routing rules always send fallback results to staff review. A human corrects the classification; the report is never silently dropped.
+
+**Deterministic routing rules on top of the AI.** The AI is not trusted to make the routing decision. Three rules always run after the model responds, regardless of what it returns: `not_relevant` type rejects the report, priority ≥ 4 sends it to staff review, confidence < 0.70 sends it to staff review. This means a miscalibrated model cannot bypass the review step for high-risk reports.
+
+**bcryptjs not bcrypt.** The `bcrypt` package uses native Node.js crypto bindings that do not exist in the Workers runtime. `bcryptjs` is a pure-JavaScript implementation that works everywhere. I found this by running `wrangler dev` and seeing the startup error before switching.
+
+**HTML bundled by wrangler, not served from R2.** The free plan has no R2 quota for the demo period. Wrangler bundles the HTML at deploy time via `import ... with { type: 'text' }`. The total bundle is 184 KB gzipped, which is well within the 1 MB Worker size limit and serves fast from the edge.
+
+**Base64 photos stored in D1.** The free plan has no R2. D1 has a roughly 1 MB per-row limit on the free tier, which caps photos at approximately 700 KB. This is a known limitation documented below. The server validates photo size before storage so that oversized photos get a clear error rather than a silent database failure.
+
+**Per-IP rate limiting backed by D1.** Workers does not have a built-in rate limiter on the free tier. A D1 table with sliding-window counters is sufficient for the expected load and does not require Durable Objects.
+
+---
+
+## Accuracy
+
+Measured against `data/labelled-reports.json`, which contains 40 reports with expert-assigned type and priority labels.
+
+### Keyword fallback (runs when AI is unavailable)
+
+| Metric | Score |
+|--------|-------|
+| Type | 37 / 40 = **93%** |
+| Priority | 23 / 40 = **58%** |
+
+All fallback results have `confidence = 0.55`, which is below the 0.70 threshold, so all 40 are routed to `needs_review`. Priority accuracy of the fallback is conservative by design — human review corrects the gaps.
+
+To reproduce:
+
+```bash
+npm run accuracy
 ```
 
 ---
 
-## 📊 Triage Accuracy
+## 3 reports it gets wrong and why
 
-Measured against `data/labelled-reports.json` (40 expert-labelled Colombo reports):
+### 1. r-0112 — "Lights very dim on the railway underpass, hard to see the steps"
 
-| Mode | Type Accuracy | Priority Accuracy |
-|------|:---:|:---:|
-| **Keyword fallback** | **93%** (37/40) | **58%** (23/40) |
-| **Workers AI (LLaMA 3.1-8B)** | Higher (live) | Higher (live) |
+**Expected:** `type = street_light`, `priority = 3`
+**Got:** `type = street_light`, `priority = 2`
 
-> All fallback results have `confidence=0.55`, routing them to `needs_review` for human correction. The conservative priority accuracy is by design — staff review catches the gaps.
+The type is correct. The priority fails because the fallback assigns `priority = 2` as the default for street lights. "Railway underpass" is a high-traffic enclosed space where dim lighting is a fall risk, but the keyword list has no term for enclosed pedestrian routes. Adding `underpass`, `tunnel`, `flyover`, and `subway` to the sensitive-places list raises this to 3 correctly.
 
----
+### 2. r-0119 — "Bridge railing missing a section over the canal, a drop of 3 metres"
 
-## 📐 Architecture
+**Expected:** `type = pothole`, `priority = 5`
+**Got:** `type = pothole`, `priority = 2`
 
-```
-┌────────────────────────────────────────────────────────────────────┐
-│                     Cloudflare Edge (APAC)                         │
-│                                                                    │
-│  ┌──────────────┐    ┌─────────────────────────────────────────┐  │
-│  │   Browser    │────│           Cloudflare Worker              │  │
-│  │              │    │                                         │  │
-│  │  MapLibre GL │    │  Hono Router                            │  │
-│  │  HTML pages  │    │  ├── GET /                              │  │
-│  │              │    │  ├── POST /api/reports  ──► AI Triage   │  │
-│  └──────────────┘    │  │                          │           │  │
-│                      │  │                    ┌─────┴──────┐    │  │
-│                      │  │                    │ Workers AI │    │  │
-│                      │  │                    │ LLaMA 3.1  │    │  │
-│                      │  │                    │   8B-instr │    │  │
-│                      │  │                    └─────┬──────┘    │  │
-│                      │  │                          │           │  │
-│                      │  │                    ┌─────▼──────┐    │  │
-│                      │  │                    │  Routing   │    │  │
-│                      │  │                    │   Rules    │    │  │
-│                      │  │                    └─────┬──────┘    │  │
-│                      │  │                          │           │  │
-│                      │  │  ├── Staff routes ◄──────┘           │  │
-│                      │  │  │   Auth / Queue / Review            │  │
-│                      │  │  │   Zones / Settings / Audit         │  │
-│                      │  │  │                                   │  │
-│                      │  └──┼───────────────────────────────────┘  │
-│                      │     │                                       │
-│                      │  ┌──▼──────────────────────────────────┐   │
-│                      │  │         Cloudflare D1 (SQLite)       │   │
-│                      │  │  reports · report_events · zones     │   │
-│                      │  │  users · settings · rate_limits      │   │
-│                      │  └─────────────────────────────────────┘   │
-└────────────────────────────────────────────────────────────────────┘
-```
+The type is correct (`bridge`, `railing`, `missing` all match the pothole list). The priority fails completely. A 3-metre drop into a canal is a life-threatening hazard, but the keywords `missing section`, `drop of`, and the number `3 metres` are not in the danger list. The model (when available) catches this correctly because it understands context. The fix for the fallback is to add `missing section`, `drop`, `metres deep`, and `fell into` to the P5 escalation list.
 
-### Routing Rules (deterministic — override AI every time)
+### 3. r-0122 — "Market bins overflowing into the drain"
 
-```
-type == "not_relevant"  ──────────────────► reject
-priority >= 4           ──────────────────► needs_approval (staff review)
-confidence < 0.70       ──────────────────► needs_approval (staff review)
-else                    ──────────────────► publish (visible on public map)
-```
+**Expected:** `type = rubbish`, `priority = 3`
+**Got:** `type = flooding`, `priority = 4`
+
+Both type and priority are wrong. The text contains both `bin` (rubbish) and `drain` (flooding). The flooding list scores two matches because `overflow` and `drain` both appear, while the rubbish list scores one match for `bin`. The tie-breaking logic picks flooding. The AI model reads the sentence structure and understands that rubbish is the subject and the drain is just where it is going — it classifies correctly. The fallback fix is to check for `bin` or `waste` as a tiebreaker when flooding and rubbish scores are close.
 
 ---
 
-## 🗂️ Project Structure
+## What is missing
 
-```
-streetwise/
-├── 📄 wrangler.toml                 Cloudflare config (D1 + AI bindings)
-├── 📄 package.json
-├── 📄 tsconfig.json
-├── 📄 vitest.config.ts
-│
-├── 📁 data/
-│   ├── zones.json                   6 Colombo maintenance zone polygons
-│   ├── labelled-reports.json        40 expert-labelled test reports
-│   └── past-reports.json            240 seeded historical reports
-│
-├── 📁 src/
-│   ├── index.ts                     Worker entry + Hono router
-│   │
-│   ├── 📁 middleware/
-│   │   └── auth.ts                  JWT verify · requireAuth · requireAdmin
-│   │
-│   ├── 📁 routes/
-│   │   ├── triage.ts                POST /api/triage
-│   │   ├── reports.ts               GET/POST /api/reports + /follow
-│   │   ├── stats.ts                 GET /api/stats
-│   │   └── 📁 staff/
-│   │       ├── auth.ts              Login / logout
-│   │       ├── queue.ts             Review queue
-│   │       ├── review.ts            Approve / reject / merge / edit
-│   │       ├── zones.ts             Zone pause/unpause
-│   │       ├── settings.ts          Live settings CRUD
-│   │       └── audit.ts             Audit log
-│   │
-│   ├── 📁 services/
-│   │   ├── auth.ts                  JWT sign/verify + bcrypt + cookies
-│   │   ├── events.ts                Audit event logger
-│   │   ├── rateLimit.ts             Per-IP sliding window (D1-backed)
-│   │   └── 📁 triage/
-│   │       ├── model.ts             Workers AI call + timeout + retry
-│   │       ├── fallback.ts          Keyword fallback (always returns a result)
-│   │       ├── rules.ts             Deterministic routing rules engine
-│   │       └── zone.ts              Ray-casting point-in-polygon
-│   │
-│   ├── 📁 validators/
-│   │   ├── report.ts                Zod — citizen report submission
-│   │   └── triage.ts                Zod — /api/triage contract
-│   │
-│   ├── 📁 db/migrations/
-│   │   ├── 0001_init.sql            Tables + indexes
-│   │   ├── 0002_seed.sql            Zones + settings + marking users
-│   │   └── 0003_past_reports.sql    240 historical reports
-│   │
-│   └── 📁 public/                   HTML pages (bundled by wrangler)
-│       ├── index.html               Public map
-│       ├── report.html              Citizen report form
-│       ├── follow.html              Private status follow page
-│       └── 📁 staff/
-│           ├── login.html           Sign in
-│           ├── queue.html           Review queue
-│           ├── review.html          Report detail + actions
-│           ├── zones.html           Zone management
-│           ├── settings.html        Live settings
-│           └── audit.html           Audit log
-│
-├── 📁 tests/
-│   ├── rules.test.ts               (13 tests) Routing rules
-│   ├── fallback.test.ts            (14 tests) Keyword triage
-│   ├── validation.test.ts          (21 tests) Input schemas
-│   └── roles.test.ts               (9 tests)  JWT + roles
-│
-└── 📁 scripts/
-    ├── measure-accuracy.ts         Accuracy against labelled data (live API)
-    └── check-accuracy.ts           Quick local accuracy check
-```
-
----
-
-## 🔌 API Reference
-
-### `POST /api/triage` — AI Classification (Public)
-
-Classify a report without persisting it. Third-party callable.
-
-**Request:**
-```json
-{
-  "id": "r-0412",
-  "text": "Deep pothole by the bus stop, a scooter nearly fell",
-  "lat": 6.9147,
-  "lng": 79.873,
-  "reported_at": "2026-10-27T08:14:00+05:30",
-  "photo_url": null
-}
-```
-
-**Response `200`:**
-```json
-{
-  "id": "r-0412",
-  "type": "pothole",
-  "size": "medium",
-  "priority": 4,
-  "zone": "Z-03",
-  "confidence": 0.87,
-  "reason": "Scooter incident near bus stop indicates injury risk.",
-  "route": "needs_approval",
-  "triaged_by": "model"
-}
-```
-
-### `POST /api/reports` — Submit Report (Public)
-```json
-// Request
-{ "text": "...", "lat": 6.91, "lng": 79.87, "photo": "data:image/jpeg;base64,..." }
-
-// Response 201
-{ "id": "r-abc123", "follow_link": "https://…/follow?id=…&token=…", "status": "needs_review", "zone": "Z-03" }
-```
-
-### `GET /api/stats` — Public Counters
-```json
-{ "totals": { "open": 58, "fixed_30d": 182, "fixed_total": 182 }, "zones": [...] }
-```
-
-### Staff endpoints (JWT cookie required)
-
-| Method | Path | Role | Action |
-|--------|------|------|--------|
-| `POST` | `/api/staff/login` | — | Get session cookie |
-| `GET` | `/api/staff/queue` | Staff | Review queue |
-| `POST` | `/api/staff/reports/:id/approve` | Staff | Publish report |
-| `POST` | `/api/staff/reports/:id/reject` | Staff | Reject with reason |
-| `POST` | `/api/staff/reports/:id/merge` | Staff | Merge duplicate |
-| `PATCH` | `/api/staff/reports/:id` | Staff | Edit type/priority/status |
-| `GET/PATCH` | `/api/staff/zones/:id` | Admin | Zone pause/unpause |
-| `GET/PUT` | `/api/staff/settings` | Admin | Live configuration |
-| `GET` | `/api/staff/audit` | Admin | Full audit log |
-
----
-
-## 📋 Status
-
-| Component | Status |
-|-----------|--------|
-| 🌍 Public map with live report pins | ✅ Complete |
-| 📝 3-step citizen report form | ✅ Complete |
-| 📸 Photo upload (JPEG/PNG, ≤5 MB) | ✅ Complete |
-| 🔍 Private follow page + timeline | ✅ Complete |
-| 🤖 Workers AI triage (LLaMA 3.1-8B) | ✅ Complete |
-| 📋 Keyword fallback (93% type accuracy) | ✅ Complete |
-| ⚖️ Deterministic routing rules | ✅ Complete |
-| 🗺️ Zone assignment (ray-casting polygon) | ✅ Complete |
-| 🔐 JWT authentication + bcrypt | ✅ Complete |
-| 🛡️ Rate limiting (per-IP, D1-backed) | ✅ Complete |
-| 📋 Staff review queue | ✅ Complete |
-| ✅ Report approve / reject / merge / edit | ✅ Complete |
-| 🗺️ Admin zone pause/unpause | ✅ Complete |
-| ⚙️ Live settings (no redeploy) | ✅ Complete |
-| 📜 Audit log (full event trail) | ✅ Complete |
-| 🧪 57/57 unit tests passing | ✅ Complete |
-| 🌐 Live on Cloudflare Workers | ✅ Live |
-| 📄 AI.md (3 mistakes + 1 self-written) | ✅ Complete |
-| ⏱️ Replay time slider | ⬜ Bonus — not built |
-| 📊 Weekly AI summary | ⬜ Bonus — not built |
-| 🔮 Forecast heat map | ⬜ Bonus — not built |
-
----
-
-## ⚠️ Known Limitations
-
-| Issue | Detail |
-|-------|--------|
-| Photo storage limit | Base64 in D1; rows capped ~700 KB on free plan. Production would use R2. |
-| AI in local mode | Workers AI calls the real network — offline dev uses keyword fallback. |
-| Real-time push | Map polls every 30 s. Durable Objects would enable WebSocket push. |
-| 30-day chart | Series data returned by `/api/stats` but chart UI not yet rendered. |
-| Email notifications | Citizens use the follow link; no email/SMS integration. |
-
----
-
-## 🤝 Built By
-
-**Missari Ahil** — [missariahil10@gmail.com](mailto:missariahil10@gmail.com)
-
-Built in 96 hours for the **Dynarq Systems Full-Stack Engineering Assessment**.
-
-Stack: Cloudflare Workers · D1 · Workers AI · Hono · TypeScript · MapLibre GL
+| Item | Detail |
+|------|--------|
+| Photo storage above 700 KB | D1 has a ~1 MB row limit on the free plan. In production, photos would be uploaded to R2 and stored by URL, not base64. |
+| Real-time map updates | The map polls every 30 seconds. Durable Objects with WebSockets would push updates immediately. |
+| 30-day trend chart | The `/api/stats` endpoint returns daily series data, but the chart component on the public map is not rendered yet. |
+| Replay time slider | Bonus feature listed in the spec. Not built. |
+| Weekly AI summary | Bonus feature listed in the spec. Not built. |
+| Forecast heat map | Bonus feature listed in the spec. Not built. |
+| Email and SMS notifications | Citizens track their report via the follow link. No outbound notification channel is wired up. |
+| GitHub Actions CI/CD | Deployment is manual via `wrangler deploy`. A workflow that runs tests and deploys on push to `main` is not configured. |
